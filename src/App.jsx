@@ -161,10 +161,9 @@ export default function App() {
     }
   };
 
+  // Reinicio directo sin confirmación molesta
   const handleClear = () => {
-    if (window.confirm('¿Reiniciar todos los ramos aprobados de la malla?')) {
-      setApproved([]);
-    }
+    setApproved([]);
   };
 
   const handleApproveUntilSemester = (targetSemester) => {
@@ -188,7 +187,7 @@ export default function App() {
     return { course: current, prereqs, coreqs, unlocks };
   }, [hoveredCourseId, courseMap, directDependents]);
 
-  // Manejador de entrada con temporizador EXACTO de 5 segundos (5000 ms)
+  // Manejador de entrada con temporizador EXACTO de 3 segundos (3000 ms)
   const handleMouseEnterCard = (course, event) => {
     currentHoveredIdRef.current = course.id;
     setHoveredCourseId(course.id);
@@ -206,12 +205,12 @@ export default function App() {
       left: Math.max(16, Math.min(window.innerWidth - 340, rect.left - 20))
     };
 
-    // Temporizador EXACTO de 5 segundos (5000 ms)
+    // Temporizador EXACTO de 3 segundos (3000 ms, ni más ni menos)
     hoverTimerRef.current = setTimeout(() => {
       if (currentHoveredIdRef.current === course.id) {
         setTooltipData({ course, pos });
       }
-    }, 5000);
+    }, 3000);
   };
 
   const handleMouseLeaveCard = (course) => {
@@ -368,8 +367,7 @@ export default function App() {
     const isCoreq = hoveredInfo?.coreqs.has(course.id);
     const isUnlockTarget = hoveredInfo?.unlocks.has(course.id);
 
-    const isClinicalHighlight = highlightClinics && course.campoClinico;
-    const isDimmedByClinical = highlightClinics && !course.campoClinico;
+    const isClinical = course.campoClinico;
 
     // Búsqueda
     const matchesSearch = search.trim() === '' ||
@@ -377,13 +375,13 @@ export default function App() {
       course.codigo.toLowerCase().includes(search.toLowerCase()) ||
       String(course.numero) === search.trim();
 
-    // ESTADO DE DISPONIBILIDAD (VERDE = HABILITADO / APTO, ROJO = BLOQUEADO / AÚN NO SE ABRE)
+    // ESTADO DE DISPONIBILIDAD ESTÁNDAR
     let stateBorder = 'border-zinc-800';
     let opacityStyle = 'opacity-100';
 
     if (!isApp) {
       if (unlocked) {
-        // HABILITADO / APTO: Borde verde vibrante, 100% visible
+        // HABILITADO / APTO: Borde verde brillante, 100% visible
         stateBorder = 'border-2 border-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.35)]';
         opacityStyle = 'opacity-100';
       } else {
@@ -395,6 +393,27 @@ export default function App() {
       // APROBADO: Borde sutil y buena visibilidad con franja roja diagonal
       stateBorder = 'border border-zinc-700/80';
       opacityStyle = 'opacity-85 hover:opacity-100';
+    }
+
+    // MODO "CONTIENE CAMPO CLÍNICO":
+    // Si está activado, los ramos clínicos se distinguen notablemente (aunque no estén habilitados),
+    // y el que esté habilitado se ve COMPLETAMENTE MÁS LLAMATIVO con resplandor dorado/esmeralda y pulso.
+    let clinicalHighlightClass = '';
+    if (highlightClinics) {
+      if (isClinical) {
+        if (unlocked && !isApp) {
+          // Habilitado + Clínico: Máximo resplandor y llamado visual
+          clinicalHighlightClass = 'ring-4 ring-amber-300 border-2 border-emerald-400 shadow-[0_0_25px_rgba(251,191,36,0.9)] scale-[1.04] z-20 brightness-125 opacity-100 animate-pulse';
+        } else if (isApp) {
+          clinicalHighlightClass = 'ring-2 ring-amber-400 border border-amber-400/80 shadow-[0_0_12px_rgba(251,191,36,0.5)] z-10 opacity-95';
+        } else {
+          // Bloqueado pero Clínico: Se nota y distingue claramente de los demás
+          clinicalHighlightClass = 'ring-2 ring-amber-500/90 border-2 border-amber-500/80 shadow-[0_0_14px_rgba(245,158,11,0.6)] z-10 brightness-110 opacity-85';
+        }
+      } else {
+        // No tiene campo clínico: se atenúa para destacar las clínicas
+        opacityStyle = 'opacity-20 pointer-events-none grayscale-[40%]';
+      }
     }
 
     // RESALTADOS DINÁMICOS AL PONER EL CURSOR SOBRE UN RAMO
@@ -409,12 +428,6 @@ export default function App() {
       hoverRing = 'ring-2 ring-cyan-400 scale-[1.02] shadow-[0_0_15px_rgba(56,189,248,0.7)] z-20 brightness-110 opacity-100';
     } else if (isCoreq) {
       hoverRing = 'ring-2 ring-red-500 scale-[1.02] shadow-[0_0_15px_rgba(239,68,68,0.7)] z-20 opacity-100';
-    } else if (isClinicalHighlight) {
-      hoverRing = 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.7)] z-10 brightness-115 opacity-100';
-    }
-
-    if (isDimmedByClinical) {
-      opacityStyle = 'opacity-15 pointer-events-none';
     }
 
     if (!matchesSearch) {
@@ -432,9 +445,9 @@ export default function App() {
         onMouseLeave={() => handleMouseLeaveCard(course)}
         className={`
           relative w-[145px] h-[92px] flex-shrink-0 rounded-md flex flex-col justify-between cursor-pointer transition-all duration-75 select-none overflow-hidden
-          ${stateBorder}
+          ${clinicalHighlightClass || stateBorder}
           ${hoverRing}
-          ${opacityStyle}
+          ${clinicalHighlightClass ? '' : opacityStyle}
         `}
         style={{
           boxShadow: isHovered ? '0 10px 25px rgba(0,0,0,0.8)' : '0 2px 5px rgba(0,0,0,0.5)'
@@ -510,6 +523,19 @@ export default function App() {
           )}
 
           {isApp && <div className="absolute inset-0 bg-black/40 z-10" />}
+
+          {/* Insignia cuando el filtro de Campos Clínicos está activo */}
+          {highlightClinics && isClinical && (
+            <div
+              className={`absolute bottom-0 right-0 z-20 px-1 py-0.2 rounded-tl text-[8px] font-black uppercase tracking-wider ${
+                unlocked && !isApp
+                  ? 'bg-amber-300 text-black shadow-md'
+                  : 'bg-amber-500/90 text-white'
+              }`}
+            >
+              {unlocked && !isApp ? '★ Habilitado' : '★ Clínico'}
+            </div>
+          )}
         </div>
 
         {/* ================= BARRA INFERIOR (DEPENDENCIAS Y CRÉDITOS) ================= */}
@@ -621,7 +647,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Botón Resaltar Campos Clínicos */}
+            {/* Botón Contiene Campo Clínico */}
             <button
               onClick={() => setHighlightClinics(!highlightClinics)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
@@ -631,7 +657,7 @@ export default function App() {
               }`}
             >
               <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-              <span>Solo Campos Clínicos</span>
+              <span>Contiene Campo Clínico</span>
             </button>
 
             {/* Aprobación Rápida */}
@@ -656,12 +682,12 @@ export default function App() {
         </div>
       </header>
 
-      {/* ================= CONTENEDOR PRINCIPAL TOTALMENTE ADAPTABLE SIN COLAPSO ================= */}
-      <main className="flex-1 overflow-x-auto overflow-y-visible px-6 py-6 w-full">
-        {/* Contenedor con origin-top-left FIJO para que las coordenadas coincidan al 100% */}
+      {/* ================= CONTENEDOR PRINCIPAL CENTRADO Y ADAPTABLE ================= */}
+      <main className="flex-1 overflow-x-auto overflow-y-visible px-6 py-6 w-full flex justify-center">
+        {/* Contenedor centrado con m-auto y origin-top */}
         <div
           ref={containerRef}
-          className="relative inline-block mx-auto min-w-max transition-transform duration-75 origin-top-left"
+          className="relative m-auto min-w-max transition-transform duration-75 origin-top"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
           {/* ================= CAPA DE FLECHAS SVG DIRECTAS Y PRECISAS ================= */}
@@ -793,7 +819,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* ================= TOOLTIP ESTABLE TRAS EXACTAMENTE 5 SEGUNDOS ================= */}
+      {/* ================= TOOLTIP ESTABLE TRAS EXACTAMENTE 3 SEGUNDOS ================= */}
       {tooltipData && (
         <div
           className="fixed pointer-events-none z-50 bg-[#121316]/95 border border-zinc-600 rounded-lg p-3 shadow-2xl text-left text-xs max-w-sm backdrop-blur-md animate-in fade-in duration-200"
@@ -889,7 +915,7 @@ export default function App() {
             <button
               onClick={handleClear}
               className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-900 hover:bg-red-950/60 hover:text-red-300 border border-zinc-700 text-zinc-400 transition"
-              title="Reiniciar todos los ramos aprobados"
+              title="Reiniciar todos los ramos aprobados inmediatamente"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Limpiar ramos</span>
