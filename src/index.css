@@ -5,37 +5,30 @@
 :root {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   color-scheme: dark;
+  background-color: #000000;
 }
 
-/* Custom scrollbars for the horizontal semester view */
+body {
+  background-color: #000000;
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   height: 8px;
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #090d16;
+  background: #09090b;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #27272a;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
-}
-
-/* Subtle glowing pulse for available courses */
-@keyframes pulse-subtle {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.85;
-  }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background: #3f3f46;
 }

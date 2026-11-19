@@ -1,51 +1,69 @@
 {
   "carrera": "Enfermería",
   "universidad": "Universidad Andrés Bello (UNAB)",
-  "sede": "Campus República / Nacional",
+  "resolucion": "Plan de Estudios Oficial - Malla con Requisitos y Co-requisitos",
   "totalSemestres": 10,
   "totalCreditos": 241,
   "categorias": [
     {
-      "id": "ciencias-basicas",
-      "nombre": "Ciencias Básicas",
+      "id": "biomedicas",
+      "nombre": "Ciencias Biomédicas y Morfología",
+      "descripcion": "Bases biológicas, químicas, celulares, anatómicas y fisiológicas del organismo.",
       "color": "pink",
-      "bgLight": "bg-pink-900/40 border-pink-500/50 text-pink-200",
-      "badge": "bg-pink-500 text-white"
+      "colorHex": "#ec4899",
+      "bgCard": "bg-pink-950/40 border-pink-500/80 text-white",
+      "badge": "bg-pink-600 text-white",
+      "arrowColor": "#ec4899"
     },
     {
       "id": "disciplinar",
-      "nombre": "Enfermería Disciplinar y Cuidado",
+      "nombre": "Enfermería Disciplinar y Cuidados Clínicos",
+      "descripcion": "Fundamentos teóricos y metodológicos del cuidado de enfermería a lo largo del ciclo vital.",
       "color": "blue",
-      "bgLight": "bg-blue-900/40 border-blue-500/50 text-blue-200",
-      "badge": "bg-blue-600 text-white"
+      "colorHex": "#2563eb",
+      "bgCard": "bg-blue-950/50 border-blue-500/80 text-white",
+      "badge": "bg-blue-600 text-white",
+      "arrowColor": "#3b82f6"
     },
     {
-      "id": "gestion-salud",
-      "nombre": "Salud Pública y Gestión",
-      "color": "teal",
-      "bgLight": "bg-teal-900/40 border-teal-500/50 text-teal-200",
-      "badge": "bg-teal-600 text-white"
+      "id": "salud-publica",
+      "nombre": "Salud Pública, Epidemiología y Gestión",
+      "descripcion": "Diagnóstico comunitario, promoción de la salud, administración y liderazgo en unidades de salud.",
+      "color": "cyan",
+      "colorHex": "#06b6d4",
+      "bgCard": "bg-cyan-950/40 border-cyan-500/80 text-white",
+      "badge": "bg-cyan-600 text-white",
+      "arrowColor": "#06b6d4"
     },
     {
-      "id": "humanista",
-      "nombre": "Ciencias Sociales y Humanistas",
-      "color": "purple",
-      "bgLight": "bg-purple-900/40 border-purple-500/50 text-purple-200",
-      "badge": "bg-purple-600 text-white"
+      "id": "farmacologia",
+      "nombre": "Farmacología y Terapéutica",
+      "descripcion": "Mecanismos de acción farmacológica, administración segura de medicamentos y farmacovigilancia.",
+      "color": "green",
+      "colorHex": "#10b981",
+      "bgCard": "bg-emerald-950/40 border-emerald-500/80 text-white",
+      "badge": "bg-emerald-600 text-white",
+      "arrowColor": "#10b981"
     },
     {
-      "id": "general",
-      "nombre": "Formación General e Inglés",
-      "color": "amber",
-      "bgLight": "bg-amber-900/40 border-amber-500/50 text-amber-200",
-      "badge": "bg-amber-500 text-slate-950"
+      "id": "general-idiomas",
+      "nombre": "Formación General e Idioma Inglés",
+      "descripcion": "Habilidades comunicativas, razonamiento cuantitativo y científico, pensamiento crítico, responsabilidad social e inglés profesional.",
+      "color": "yellow",
+      "colorHex": "#eab308",
+      "bgCard": "bg-amber-950/40 border-amber-500/80 text-white",
+      "badge": "bg-amber-500 text-black font-bold",
+      "arrowColor": "#eab308"
     },
     {
-      "id": "integrador",
-      "nombre": "Integradores e Internados Clínicos",
+      "id": "integradores",
+      "nombre": "Integradores e Internados Profesionales",
+      "descripcion": "Internados clínicos y de salud familiar intensivos donde se integran todos los conocimientos.",
       "color": "indigo",
-      "bgLight": "bg-indigo-900/40 border-indigo-500/50 text-indigo-200",
-      "badge": "bg-indigo-600 text-white"
+      "colorHex": "#6366f1",
+      "bgCard": "bg-indigo-950/60 border-indigo-500/90 text-white",
+      "badge": "bg-indigo-600 text-white",
+      "arrowColor": "#818cf8"
     }
   ],
   "ramos": [
@@ -56,10 +74,11 @@
       "semestre": 1,
       "ano": 1,
       "creditos": 6,
-      "categoria": "ciencias-basicas",
+      "categoria": "biomedicas",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Estudio anatómico y funcional de la estructura corporal humana."
     },
     {
       "id": "QUI-100",
@@ -68,10 +87,11 @@
       "semestre": 1,
       "ano": 1,
       "creditos": 5,
-      "categoria": "ciencias-basicas",
+      "categoria": "biomedicas",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Principios químicos aplicados a los procesos biológicos de los seres vivos."
     },
     {
       "id": "BIO-100",
@@ -80,10 +100,11 @@
       "semestre": 1,
       "ano": 1,
       "creditos": 5,
-      "categoria": "ciencias-basicas",
+      "categoria": "biomedicas",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Estructura, ultraestructura y fisiología de las células humanas."
     },
     {
       "id": "MAT-100",
@@ -92,10 +113,11 @@
       "semestre": 1,
       "ano": 1,
       "creditos": 4,
-      "categoria": "general",
+      "categoria": "disciplinar",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Pensamiento lógico-matemático y bioestadístico aplicado a la salud."
     },
     {
       "id": "EFER-101",
@@ -107,7 +129,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Filosofía, modelos y teorías de la enfermería como disciplina científica."
     },
     {
       "id": "MIC-200",
@@ -116,10 +139,11 @@
       "semestre": 2,
       "ano": 1,
       "creditos": 5,
-      "categoria": "ciencias-basicas",
+      "categoria": "biomedicas",
       "prerrequisitos": ["BIO-100"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Microorganismos patógenos, agentes infecciosos e inmunología básica."
     },
     {
       "id": "BIOQ-200",
@@ -128,10 +152,11 @@
       "semestre": 2,
       "ano": 1,
       "creditos": 5,
-      "categoria": "ciencias-basicas",
+      "categoria": "biomedicas",
       "prerrequisitos": ["QUI-100"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Rutas metabólicas, bioenergética y biomoléculas en el organismo humano."
     },
     {
       "id": "EFER-201",
@@ -140,10 +165,11 @@
       "semestre": 2,
       "ano": 1,
       "creditos": 4,
-      "categoria": "humanista",
+      "categoria": "disciplinar",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Desarrollo psicológico y conductual del ser humano desde la gestación hasta la vejez."
     },
     {
       "id": "EFER-202",
@@ -152,22 +178,24 @@
       "semestre": 2,
       "ano": 1,
       "creditos": 4,
-      "categoria": "humanista",
+      "categoria": "disciplinar",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Determinantes socioculturales de la salud, diversidad y prácticas de cuidado."
     },
     {
       "id": "EFER-203",
       "codigo": "EFER 203",
-      "nombre": "Bases del Cuidado de Enf.",
+      "nombre": "Bases del cuidado de Enf.",
       "semestre": 2,
       "ano": 1,
       "creditos": 6,
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-101"],
       "correquisitos": [],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Procedimientos clínicos de enfermería, bioseguridad y atención centrada en la persona."
     },
     {
       "id": "CSG-100",
@@ -176,10 +204,11 @@
       "semestre": 2,
       "ano": 1,
       "creditos": 4,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Comunicación oral, escrita y relación interpersonal terapéutica con pacientes y equipos."
     },
     {
       "id": "FIS-300",
@@ -188,10 +217,11 @@
       "semestre": 3,
       "ano": 2,
       "creditos": 6,
-      "categoria": "ciencias-basicas",
+      "categoria": "biomedicas",
       "prerrequisitos": ["MOR-100", "BIOQ-200"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Funcionamiento de los órganos y sistemas integrados del cuerpo humano."
     },
     {
       "id": "SPU-300",
@@ -200,10 +230,11 @@
       "semestre": 3,
       "ano": 2,
       "creditos": 4,
-      "categoria": "gestion-salud",
+      "categoria": "salud-publica",
       "prerrequisitos": ["EFER-202"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Sistemas de salud, epidemiología general y políticas sanitarias en Chile."
     },
     {
       "id": "EFER-301",
@@ -215,7 +246,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-202", "EFER-203"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Estrategias de promoción de la salud, estilos de vida saludables y prevención primaria."
     },
     {
       "id": "EFER-302",
@@ -227,7 +259,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-201", "EFER-203"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Gestión del cuidado de enfermería adaptado a cada etapa vital del ser humano."
     },
     {
       "id": "ING-101",
@@ -236,10 +269,11 @@
       "semestre": 3,
       "ano": 2,
       "creditos": 3,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": [],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Competencias comunicativas en inglés nivel básico elemental."
     },
     {
       "id": "EFER-401",
@@ -248,10 +282,11 @@
       "semestre": 4,
       "ano": 2,
       "creditos": 6,
-      "categoria": "ciencias-basicas",
+      "categoria": "disciplinar",
       "prerrequisitos": ["FIS-300"],
       "correquisitos": ["EFER-402"],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Alteraciones funcionales y mecanismos fisiopatológicos de las enfermedades humanas."
     },
     {
       "id": "FAR-400",
@@ -260,10 +295,11 @@
       "semestre": 4,
       "ano": 2,
       "creditos": 4,
-      "categoria": "gestion-salud",
+      "categoria": "farmacologia",
       "prerrequisitos": ["FIS-300"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Farmacocinética, farmacodinamia y familias farmacológicas principales."
     },
     {
       "id": "SPU-400",
@@ -272,10 +308,11 @@
       "semestre": 4,
       "ano": 2,
       "creditos": 4,
-      "categoria": "gestion-salud",
+      "categoria": "salud-publica",
       "prerrequisitos": ["SPU-300"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Metodología epidemiológica avanzada y gestión de programas de salud poblacional."
     },
     {
       "id": "EFER-403",
@@ -287,7 +324,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-301"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Modelo de salud familiar, instrumentos de evaluación familiar y enfoque comunitario."
     },
     {
       "id": "EFER-402",
@@ -299,7 +337,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-302"],
       "correquisitos": ["EFER-401"],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Valoración y cuidados al adulto y adulto mayor con patologías médicas y quirúrgicas."
     },
     {
       "id": "ING-102",
@@ -308,10 +347,11 @@
       "semestre": 4,
       "ano": 2,
       "creditos": 3,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": ["ING-101"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Comprensión auditiva y lectora en inglés de nivel pre-intermedio."
     },
     {
       "id": "FAR-500",
@@ -320,10 +360,11 @@
       "semestre": 5,
       "ano": 3,
       "creditos": 4,
-      "categoria": "gestion-salud",
+      "categoria": "farmacologia",
       "prerrequisitos": ["EFER-401", "FAR-400"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Tratamiento farmacológico en patologías específicas y notificación de efectos adversos."
     },
     {
       "id": "EFER-501",
@@ -335,7 +376,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-403"],
       "correquisitos": ["EFER-502", "EFER-504"],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Intervenciones de enfermería en centros de atención primaria y visitas domiciliarias."
     },
     {
       "id": "EFER-502",
@@ -347,7 +389,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-402"],
       "correquisitos": ["EFER-501", "EFER-504"],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Atención pediátrica y del adulto en servicios hospitalarios y ambulatorios."
     },
     {
       "id": "EFER-503",
@@ -356,10 +399,11 @@
       "semestre": 5,
       "ano": 3,
       "creditos": 4,
-      "categoria": "gestion-salud",
+      "categoria": "salud-publica",
       "prerrequisitos": ["SPU-400"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Teorías de la administración, liderazgo de equipos y gestión clínica."
     },
     {
       "id": "EFER-504",
@@ -368,10 +412,11 @@
       "semestre": 5,
       "ano": 3,
       "creditos": 5,
-      "categoria": "integrador",
+      "categoria": "integradores",
       "prerrequisitos": ["EFER-402", "EFER-403"],
       "correquisitos": ["EFER-501", "EFER-502"],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Integración práctica de competencias de cuidados familiares y hospitalarios."
     },
     {
       "id": "ING-103",
@@ -380,10 +425,11 @@
       "semestre": 5,
       "ano": 3,
       "creditos": 3,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": ["ING-102"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Inglés técnico intermedio orientado a la lectura de literatura científica en salud."
     },
     {
       "id": "EFER-601",
@@ -395,7 +441,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-501"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Abordaje del paciente psiquiátrico, trastornos del ánimo y salud comunitaria."
     },
     {
       "id": "EFER-602",
@@ -407,7 +454,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-401", "FAR-500", "EFER-502", "EFER-504"],
       "correquisitos": [],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Cuidados especializados a pacientes complejos hospitalizados en medicina y cirugía."
     },
     {
       "id": "EFER-603",
@@ -416,10 +464,11 @@
       "semestre": 6,
       "ano": 3,
       "creditos": 4,
-      "categoria": "gestion-salud",
+      "categoria": "disciplinar",
       "prerrequisitos": ["MAT-100", "SPU-400"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Metodología de la investigación cuantitativa y cualitativa en enfermería."
     },
     {
       "id": "EFER-604",
@@ -428,10 +477,11 @@
       "semestre": 6,
       "ano": 3,
       "creditos": 5,
-      "categoria": "gestion-salud",
+      "categoria": "disciplinar",
       "prerrequisitos": ["EFER-503"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Planificación, dotación de personal y calidad asistencial en servicios clínicos."
     },
     {
       "id": "CSG-200",
@@ -440,10 +490,11 @@
       "semestre": 6,
       "ano": 3,
       "creditos": 4,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": ["CSG-100"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Uso de tecnologías de la información y rigor científico aplicado a la salud."
     },
     {
       "id": "ING-104",
@@ -452,10 +503,11 @@
       "semestre": 6,
       "ano": 3,
       "creditos": 3,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": ["ING-103"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Inglés profesional para conferencias, presentaciones y publicaciones médicas."
     },
     {
       "id": "EFER-701",
@@ -464,10 +516,11 @@
       "semestre": 7,
       "ano": 4,
       "creditos": 4,
-      "categoria": "humanista",
+      "categoria": "disciplinar",
       "prerrequisitos": ["EFER-601"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Bioética clínica, derechos del paciente y marco legal del ejercicio profesional."
     },
     {
       "id": "EFER-702",
@@ -479,7 +532,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-501", "EFER-601"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Gestión avanzada del cuidado en redes comunitarias y atención primaria de salud."
     },
     {
       "id": "EFER-703",
@@ -491,7 +545,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-502", "EFER-602"],
       "correquisitos": [],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Cuidados al paciente pediátrico y adolescente en situaciones agudas y crónicas."
     },
     {
       "id": "EFER-705",
@@ -500,10 +555,11 @@
       "semestre": 7,
       "ano": 4,
       "creditos": 4,
-      "categoria": "gestion-salud",
+      "categoria": "disciplinar",
       "prerrequisitos": ["EFER-604"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Formulación y evaluación de proyectos de mejora en instituciones asistenciales."
     },
     {
       "id": "CSG-300",
@@ -512,10 +568,11 @@
       "semestre": 7,
       "ano": 4,
       "creditos": 4,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": ["CSG-200"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Argumentación, resolución de dilemas y toma de decisiones fundada."
     },
     {
       "id": "EFER-801",
@@ -527,7 +584,8 @@
       "categoria": "disciplinar",
       "prerrequisitos": ["EFER-602", "EFER-701", "EFER-702", "EFER-703"],
       "correquisitos": ["EFER-803"],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Cuidado integral de enfermería de alta complejidad en unidades críticas y quirúrgicas."
     },
     {
       "id": "EFER-802",
@@ -536,10 +594,11 @@
       "semestre": 8,
       "ano": 4,
       "creditos": 5,
-      "categoria": "gestion-salud",
+      "categoria": "disciplinar",
       "prerrequisitos": ["EFER-603", "EFER-705"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Desarrollo y defensa de la tesis o proyecto de investigación científica."
     },
     {
       "id": "EFER-803",
@@ -548,10 +607,11 @@
       "semestre": 8,
       "ano": 4,
       "creditos": 6,
-      "categoria": "integrador",
+      "categoria": "integradores",
       "prerrequisitos": ["EFER-504", "EFER-702", "EFER-703"],
       "correquisitos": ["EFER-801"],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Integración y consolidación de competencias previas al internado profesional."
     },
     {
       "id": "CSG-400",
@@ -560,10 +620,11 @@
       "semestre": 8,
       "ano": 4,
       "creditos": 4,
-      "categoria": "general",
+      "categoria": "general-idiomas",
       "prerrequisitos": ["CSG-300"],
       "correquisitos": [],
-      "campoClinico": false
+      "campoClinico": false,
+      "descripcion": "Compromiso cívico, desarrollo sostenible y vocación de servicio comunitario."
     },
     {
       "id": "EFER-901",
@@ -572,10 +633,11 @@
       "semestre": 9,
       "ano": 5,
       "creditos": 15,
-      "categoria": "integrador",
+      "categoria": "integradores",
       "prerrequisitos": ["EFER-801", "EFER-802", "EFER-803", "EFER-604"],
       "correquisitos": [],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Internado profesional intrahospitalario a tiempo completo en unidades clínicas complejas."
     },
     {
       "id": "EFER-1001",
@@ -584,10 +646,11 @@
       "semestre": 10,
       "ano": 5,
       "creditos": 15,
-      "categoria": "integrador",
+      "categoria": "integradores",
       "prerrequisitos": ["EFER-901", "EFER-702", "EFER-801"],
       "correquisitos": [],
-      "campoClinico": true
+      "campoClinico": true,
+      "descripcion": "Internado profesional en centros de atención primaria y redes comunitarias de salud."
     }
   ]
 }
