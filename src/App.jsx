@@ -9,11 +9,13 @@ import {
   Search,
   X,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Check,
+  Lock
 } from 'lucide-react';
 import mallaData from './data/mallaEnfermeria.json';
 
-const STORAGE_KEY = 'malla_enfermeria_unab_aprobados_v5';
+const STORAGE_KEY = 'malla_enfermeria_unab_aprobados_v6';
 
 export default function App() {
   const [approved, setApproved] = useState(() => {
@@ -26,17 +28,17 @@ export default function App() {
   });
 
   const [hoveredCourseId, setHoveredCourseId] = useState(null);
-  const [tooltipPos, setTooltipPos] = useState(null);
-  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipData, setTooltipData] = useState(null);
   const [highlightClinics, setHighlightClinics] = useState(false);
   const [search, setSearch] = useState('');
   const [showModalInfo, setShowModalInfo] = useState(false);
   const [showFastApproveModal, setShowFastApproveModal] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(100);
+  const [zoomLevel, setZoomLevel] = useState(90);
 
   const containerRef = useRef(null);
   const cardElementsRef = useRef(new Map());
-  const tooltipTimerRef = useRef(null);
+  const hoverTimerRef = useRef(null);
+  const currentHoveredIdRef = useRef(null);
 
   // Guardar en localStorage
   useEffect(() => {
@@ -47,14 +49,14 @@ export default function App() {
     }
   }, [approved]);
 
-  // Limpiar timer de tooltip al desmontar
+  // Limpiar temporizador al desmontar
   useEffect(() => {
     return () => {
-      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     };
   }, []);
 
-  // Mapa rápido de ramos por ID y por Número
+  // Mapas de ramos por ID y por Número
   const { courseMap, numberMap } = useMemo(() => {
     const byId = new Map();
     const byNum = new Map();
@@ -85,7 +87,7 @@ export default function App() {
     }
   }, [approved.length, totalRamos]);
 
-  // Dependencias directas (ramos que abre)
+  // Ramos que abre hacia el futuro
   const directDependents = useMemo(() => {
     const deps = new Map();
     mallaData.ramos.forEach(r => {
@@ -97,6 +99,7 @@ export default function App() {
     return deps;
   }, []);
 
+  // Comprobar si un ramo está habilitado (todos sus prerrequisitos aprobados)
   const isUnlocked = (course) => {
     if (!course.prerrequisitos || course.prerrequisitos.length === 0) return true;
     return course.prerrequisitos.every(reqId => approved.includes(reqId));
@@ -183,7 +186,46 @@ export default function App() {
     return { course: current, prereqs, coreqs, unlocks };
   }, [hoveredCourseId, courseMap, directDependents]);
 
-  // Flechas SVG dinámicas, finas y estables (Física suavizada con Bezier optimizado)
+  // Manejador de entrada del cursor con temporizador EXACTO de 5 segundos
+  const handleMouseEnterCard = (course, event) => {
+    currentHoveredIdRef.current = course.id;
+    setHoveredCourseId(course.id);
+
+    // Cancelar cualquier temporizador anterior
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setTooltipData(null);
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pos = {
+      top: rect.bottom + 8,
+      left: Math.max(16, Math.min(window.innerWidth - 320, rect.left - 20))
+    };
+
+    // Temporizador de 5 segundos (5000 ms, ni más ni menos)
+    hoverTimerRef.current = setTimeout(() => {
+      // Verificar que el cursor siga sobre este mismo ramo después de los 5 segundos
+      if (currentHoveredIdRef.current === course.id) {
+        setTooltipData({ course, pos });
+      }
+    }, 5000);
+  };
+
+  const handleMouseLeaveCard = (course) => {
+    if (currentHoveredIdRef.current === course.id) {
+      currentHoveredIdRef.current = null;
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+      setHoveredCourseId(null);
+      setTooltipData(null);
+    }
+  };
+
+  // Flechas directas, delgadas y limpias (como en malla-fic)
   const activeArrows = useMemo(() => {
     if (!hoveredInfo || !containerRef.current) return [];
     const { course, prereqs, coreqs, unlocks } = hoveredInfo;
@@ -204,7 +246,7 @@ export default function App() {
 
     const arrows = [];
 
-    // 1. Flechas NARANJAS (Prerrequisitos previos apuntan hacia el ramo activo)
+    // 1. Flechas NARANJAS (Prerrequisitos previos directos apuntan hacia el ramo)
     prereqs.forEach(prereqId => {
       const el = cardElementsRef.current.get(prereqId);
       if (el) {
@@ -214,12 +256,10 @@ export default function App() {
         const toX = activeBox.left;
         const toY = activeBox.centerY;
 
-        const dx = Math.abs(toX - fromX);
-        const curve = Math.min(dx * 0.45, 110);
-
+        // Trazo directo limpio con flecha
         arrows.push({
           id: `pre-${prereqId}-${course.id}`,
-          d: `M ${fromX} ${fromY} C ${fromX + curve} ${fromY}, ${toX - curve} ${toY}, ${toX} ${toY}`,
+          d: `M ${fromX} ${fromY} L ${toX} ${toY}`,
           color: '#f97316',
           dashed: false,
           strokeWidth: 2
@@ -237,12 +277,9 @@ export default function App() {
         const toX = r.left - containerRect.left;
         const toY = r.top - containerRect.top + r.height / 2;
 
-        const dx = Math.abs(toX - fromX);
-        const curve = Math.min(dx * 0.45, 110);
-
         arrows.push({
           id: `unl-${course.id}-${unlockId}`,
-          d: `M ${fromX} ${fromY} C ${fromX + curve} ${fromY}, ${toX - curve} ${toY}, ${toX} ${toY}`,
+          d: `M ${fromX} ${fromY} L ${toX} ${toY}`,
           color: '#38bdf8',
           dashed: true,
           strokeWidth: 2
@@ -250,7 +287,7 @@ export default function App() {
       }
     });
 
-    // 3. Flechas ROJAS (Co-requisitos ligados simultáneos)
+    // 3. Flechas ROJAS (Co-requisitos ligados)
     coreqs.forEach(coId => {
       const el = cardElementsRef.current.get(coId);
       if (el) {
@@ -260,12 +297,9 @@ export default function App() {
         const toX = r.left - containerRect.left + r.width / 2;
         const toY = r.top - containerRect.top;
 
-        const dy = Math.abs(toY - fromY);
-        const curve = Math.min(dy * 0.4, 50);
-
         arrows.push({
           id: `co-${course.id}-${coId}`,
-          d: `M ${fromX} ${fromY} C ${fromX} ${fromY + curve}, ${toX} ${toY - curve}, ${toX} ${toY}`,
+          d: `M ${fromX} ${fromY} L ${toX} ${toY}`,
           color: '#ef4444',
           dashed: true,
           strokeWidth: 2
@@ -299,40 +333,6 @@ export default function App() {
     return semArray;
   }, []);
 
-  // Manejo de Hover: las flechas e iluminaciones aparecen DE INMEDIATO (0ms),
-  // pero el tooltip de información detallada espera 5 SEGUNDOS para no ser molesto.
-  const handleMouseEnterCard = (course, event) => {
-    setHoveredCourseId(course.id);
-
-    // Cancelar cualquier temporizador previo
-    if (tooltipTimerRef.current) {
-      clearTimeout(tooltipTimerRef.current);
-    }
-    setShowTooltip(false);
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const pos = {
-      top: rect.bottom + 8,
-      left: Math.max(16, Math.min(window.innerWidth - 320, rect.left - 30))
-    };
-
-    // Temporizador de 5 segundos para desplegar la información completa
-    tooltipTimerRef.current = setTimeout(() => {
-      setTooltipPos(pos);
-      setShowTooltip(true);
-    }, 5000);
-  };
-
-  const handleMouseLeaveCard = () => {
-    if (tooltipTimerRef.current) {
-      clearTimeout(tooltipTimerRef.current);
-      tooltipTimerRef.current = null;
-    }
-    setHoveredCourseId(null);
-    setShowTooltip(false);
-    setTooltipPos(null);
-  };
-
   // Componente de Tarjeta
   const CourseCard = ({ course }) => {
     const isApp = approved.includes(course.id);
@@ -345,18 +345,30 @@ export default function App() {
     const isClinicalHighlight = highlightClinics && course.campoClinico;
     const isDimmedByClinical = highlightClinics && !course.campoClinico;
 
-    // Resaltado de bordes fino y limpio
-    let ringStyle = 'border border-zinc-800';
+    // Regla de color: VERDE si está habilitado para cursar, ROJO si no está habilitado (bloqueado)
+    let stateBorder = 'border-zinc-800';
+    if (!isApp) {
+      if (unlocked) {
+        // Habilitado -> Borde verde
+        stateBorder = 'border-emerald-500/90 shadow-[0_0_8px_rgba(34,197,94,0.3)]';
+      } else {
+        // No habilitado (bloqueado) -> Borde rojo
+        stateBorder = 'border-red-500/70 shadow-[0_0_6px_rgba(239,68,68,0.2)]';
+      }
+    }
+
+    // Resaltado de hover
+    let hoverRing = '';
     if (isHovered) {
-      ringStyle = 'ring-2 ring-white scale-[1.02] shadow-xl z-30 brightness-110';
+      hoverRing = 'ring-2 ring-white scale-[1.02] shadow-2xl z-30 brightness-110';
     } else if (isPrereq) {
-      ringStyle = 'ring-2 ring-orange-500 scale-[1.01] shadow-md shadow-orange-500/40 z-20';
+      hoverRing = 'ring-2 ring-orange-500 scale-[1.01] shadow-lg shadow-orange-500/50 z-20';
     } else if (isUnlockTarget) {
-      ringStyle = 'ring-2 ring-cyan-400 scale-[1.01] shadow-md shadow-cyan-500/40 z-20';
+      hoverRing = 'ring-2 ring-cyan-400 scale-[1.01] shadow-lg shadow-cyan-500/50 z-20';
     } else if (isCoreq) {
-      ringStyle = 'ring-2 ring-red-500 border-dashed scale-[1.01] shadow-md shadow-red-500/40 z-20';
+      hoverRing = 'ring-2 ring-red-500 border-dashed scale-[1.01] shadow-lg shadow-red-500/50 z-20';
     } else if (isClinicalHighlight) {
-      ringStyle = 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-10 brightness-115';
+      hoverRing = 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-10 brightness-115';
     }
 
     let opacityStyle = 'opacity-100';
@@ -375,23 +387,33 @@ export default function App() {
         }}
         onClick={() => handleToggleCourse(course)}
         onMouseEnter={(e) => handleMouseEnterCard(course, e)}
-        onMouseLeave={handleMouseLeaveCard}
+        onMouseLeave={() => handleMouseLeaveCard(course)}
         className={`
-          relative w-[148px] h-[92px] rounded-md flex flex-col justify-between cursor-pointer transition-transform duration-75 select-none overflow-hidden
-          ${ringStyle}
+          relative w-[140px] h-[90px] flex-shrink-0 rounded flex flex-col justify-between cursor-pointer transition-transform duration-75 select-none overflow-hidden border
+          ${stateBorder}
+          ${hoverRing}
           ${opacityStyle}
         `}
         style={{
           boxShadow: isHovered ? '0 8px 20px rgba(0,0,0,0.7)' : '0 2px 4px rgba(0,0,0,0.4)'
         }}
       >
-        {/* ================= BARRA SUPERIOR (CÓDIGO + N° DE SERIE EN CÍRCULO BLANCO) ================= */}
-        <div className="bg-[#101114] px-2 py-0.5 flex items-center justify-between border-b border-black/40">
-          <span className="font-mono text-[11px] font-black text-white tracking-tight">
-            {course.codigo}
-          </span>
+        {/* ================= BARRA SUPERIOR (CÓDIGO + ESTRELLA + N° SERIE EN CÍRCULO BLANCO) ================= */}
+        <div className="bg-[#101114] px-1.5 py-0.5 flex items-center justify-between border-b border-black/40">
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-[10.5px] font-black text-white tracking-tight">
+              {course.codigo}
+            </span>
+            {/* Indicador de estado: punto verde si habilitado, punto rojo si bloqueado */}
+            {!isApp && (
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${unlocked ? 'bg-emerald-400' : 'bg-red-500'}`}
+                title={unlocked ? 'Habilitado para cursar' : 'Bloqueado por prerrequisitos'}
+              />
+            )}
+          </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             {course.campoClinico && (
               <span title="Campo Clínico Obligatorio" className="text-amber-400 flex items-center">
                 <Star className="w-3 h-3 fill-amber-400" />
@@ -405,7 +427,7 @@ export default function App() {
             )}
 
             <span
-              className="w-4.5 h-4.5 min-w-[18px] rounded-full bg-white text-black font-black text-[10px] flex items-center justify-center shadow-sm"
+              className="w-4 h-4 min-w-[16px] rounded-full bg-white text-black font-black text-[9.5px] flex items-center justify-center shadow-sm"
               title={`Número de ramo: ${course.numero}`}
             >
               {course.numero}
@@ -413,19 +435,19 @@ export default function App() {
           </div>
         </div>
 
-        {/* ================= CUERPO CENTRAL (COLOR MATE CÓMODO + NOMBRE GRANDE) ================= */}
+        {/* ================= CUERPO CENTRAL (COLOR PROPIO + NOMBRE) ================= */}
         <div
           className="flex-1 px-1.5 py-1 flex items-center justify-center relative overflow-hidden"
           style={{ backgroundColor: course.color }}
         >
           <div
-            className="text-xs font-bold text-center leading-[1.2] line-clamp-3 z-10 drop-shadow-sm"
+            className="text-[11.5px] font-bold text-center leading-[1.15] line-clamp-3 z-10 drop-shadow-sm"
             style={{ color: course.textColor || '#ffffff' }}
           >
             {course.nombre}
           </div>
 
-          {/* ================= FRANJA ROJA DIAGONAL AL CLIQUEAR (RAMO APROBADO) ================= */}
+          {/* ================= FRANJA ROJA DIAGONAL (APROBADO) ================= */}
           {isApp && (
             <div className="absolute inset-0 pointer-events-none z-20">
               <svg className="w-full h-full">
@@ -445,11 +467,11 @@ export default function App() {
           {isApp && <div className="absolute inset-0 bg-black/45 z-10" />}
         </div>
 
-        {/* ================= BARRA INFERIOR (CÍRCULOS DE DEPENDENCIAS + CRÉDITOS) ================= */}
-        <div className="bg-[#101114] px-2 py-0.5 flex items-center justify-between border-t border-black/40">
+        {/* ================= BARRA INFERIOR (CÍRCULOS: VERDE SI APROBADO, ROJO SI NO) ================= */}
+        <div className="bg-[#101114] px-1.5 py-0.5 flex items-center justify-between border-t border-black/40">
           <div className="flex items-center gap-1 min-w-0" title={`Depende de los ramos N°: ${course.prerrequisitosNumeros.join(', ') || 'Ninguno'}`}>
             {course.prerrequisitosNumeros.length === 0 ? (
-              <span className="w-2 h-2 rounded-full bg-zinc-700/60" />
+              <span className="w-1.5 h-1.5 rounded-full bg-zinc-700/60" />
             ) : (
               course.prerrequisitosNumeros.map(num => {
                 const reqCourse = numberMap.get(num);
@@ -457,10 +479,10 @@ export default function App() {
                 return (
                   <span
                     key={num}
-                    className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center border ${
+                    className={`w-3.5 h-3.5 rounded-full text-[8.5px] font-black flex items-center justify-center border ${
                       reqApp
-                        ? 'bg-emerald-400 text-black border-emerald-300'
-                        : 'bg-[#0284c7] text-white border-sky-300'
+                        ? 'bg-emerald-500 text-black border-emerald-300' // Verde si aprobado / habilitado
+                        : 'bg-red-500 text-white border-red-300'       // Rojo si no aprobado / pendiente
                     }`}
                   >
                     {num}
@@ -470,7 +492,7 @@ export default function App() {
             )}
           </div>
 
-          <span className="font-mono text-[9.5px] font-bold text-zinc-300 bg-zinc-800 px-1.5 py-0.2 rounded border border-zinc-700">
+          <span className="font-mono text-[9px] font-bold text-zinc-300 bg-zinc-800 px-1 py-0.2 rounded border border-zinc-700">
             {course.creditos}
           </span>
         </div>
@@ -485,15 +507,20 @@ export default function App() {
       <header className="sticky top-0 z-40 bg-[#0c0d10]/95 backdrop-blur-md border-b border-zinc-800 px-5 py-3 shadow-xl">
         <div className="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-3">
 
-          {/* Título */}
+          {/* Título con mención requerida */}
           <div className="flex items-center gap-3">
             <span className="text-2xl">🩺</span>
             <div>
-              <h1 className="text-base md:text-xl font-black tracking-tight text-white flex items-center gap-2">
-                Malla Interactiva Enfermería UNAB
-              </h1>
+              <div className="flex items-center flex-wrap gap-2">
+                <h1 className="text-base md:text-xl font-black tracking-tight text-white">
+                  Malla Interactiva Enfermería UNAB
+                </h1>
+                <span className="text-xs font-normal text-zinc-400 lowercase">
+                  (creado por un estudiante de la UDP)
+                </span>
+              </div>
               <p className="text-xs text-zinc-400 hidden sm:block">
-                Flechas delgadas precisas, colores mates descansados y respuesta fluida
+                Verde: habilitado • Rojo: bloqueado • Flechas directas y formato adaptable
               </p>
             </div>
           </div>
@@ -508,7 +535,7 @@ export default function App() {
                 placeholder="Buscar ramo..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="bg-zinc-900 border border-zinc-700 rounded-lg pl-7 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 w-36 md:w-52"
+                className="bg-zinc-900 border border-zinc-700 rounded-lg pl-7 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 w-36 md:w-48"
               />
               <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2 top-2.5" />
               {search && (
@@ -524,7 +551,7 @@ export default function App() {
             {/* Control de Zoom (+ / -) */}
             <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg px-1.5 py-1 text-xs text-zinc-300">
               <button
-                onClick={() => setZoomLevel(prev => Math.max(75, prev - 5))}
+                onClick={() => setZoomLevel(prev => Math.max(70, prev - 5))}
                 className="p-1 hover:text-white transition"
                 title="Alejar vista (Zoom -)"
               >
@@ -534,7 +561,7 @@ export default function App() {
                 {zoomLevel}%
               </span>
               <button
-                onClick={() => setZoomLevel(prev => Math.min(130, prev + 5))}
+                onClick={() => setZoomLevel(prev => Math.min(125, prev + 5))}
                 className="p-1 hover:text-white transition"
                 title="Acercar vista (Zoom +)"
               >
@@ -542,7 +569,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Botón Resaltar Campos Clínicos (con brillo, sin ocultar) */}
+            {/* Botón Resaltar Campos Clínicos */}
             <button
               onClick={() => setHighlightClinics(!highlightClinics)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
@@ -577,20 +604,20 @@ export default function App() {
         </div>
       </header>
 
-      {/* ================= CONTENEDOR PRINCIPAL CON FLECHAS SVG Y GRID ================= */}
-      <main className="flex-1 overflow-x-auto overflow-y-visible px-6 py-6 flex justify-center">
+      {/* ================= CONTENEDOR PRINCIPAL TOTALMENTE ADAPTABLE SIN COLAPSO ================= */}
+      <main className="flex-1 overflow-x-auto overflow-y-visible px-4 py-6 w-full">
+        {/* Contenedor con w-max garantizado para que NUNCA se sobrepongan las columnas al encoger la pantalla */}
         <div
           ref={containerRef}
-          className="relative inline-block transition-transform duration-75 origin-top"
+          className="relative inline-block mx-auto min-w-max transition-transform duration-75 origin-top-left xl:origin-top"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
-          {/* ================= CAPA DE FLECHAS SVG DELGADAS Y ESTABLES ================= */}
+          {/* ================= CAPA DE FLECHAS SVG DIRECTAS Y PRECISAS ================= */}
           <svg
             className="absolute inset-0 pointer-events-none z-30 w-full h-full"
             style={{ minWidth: '100%', minHeight: '100%', pointerEvents: 'none' }}
           >
             <defs>
-              {/* Puntas de flecha más finas, pequeñas y elegantes */}
               <marker
                 id="arrow-orange"
                 markerWidth="6"
@@ -630,9 +657,7 @@ export default function App() {
 
               return (
                 <g key={arrow.id} style={{ pointerEvents: 'none' }}>
-                  {/* Sombra sutil fina para contraste */}
-                  <path d={arrow.d} fill="none" stroke="#000000" strokeWidth="3.5" opacity="0.6" />
-                  {/* Línea delgada elegante */}
+                  <path d={arrow.d} fill="none" stroke="#000000" strokeWidth="3" opacity="0.6" />
                   <path
                     d={arrow.d}
                     fill="none"
@@ -647,40 +672,40 @@ export default function App() {
           </svg>
 
           {/* Cabecera de Años */}
-          <div className="grid grid-cols-10 gap-2.5 mb-2 text-center">
-            <div className="col-span-2 bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+          <div className="flex gap-2.5 mb-2 text-center">
+            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 1
             </div>
-            <div className="col-span-2 bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 2
             </div>
-            <div className="col-span-2 bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 3
             </div>
-            <div className="col-span-2 bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 4
             </div>
-            <div className="col-span-2 bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 5
             </div>
           </div>
 
           {/* Cabecera de Semestres (I a X) */}
-          <div className="grid grid-cols-10 gap-2.5 mb-3.5 text-center">
+          <div className="flex gap-2.5 mb-3.5 text-center">
             {semestersData.map(sem => (
               <div
                 key={sem.num}
-                className="bg-[#121316] border border-zinc-800 py-1 rounded text-xs font-mono font-bold text-zinc-300"
+                className="w-[140px] flex-shrink-0 bg-[#121316] border border-zinc-800 py-1 rounded text-xs font-mono font-bold text-zinc-300"
               >
                 {sem.roman}
               </div>
             ))}
           </div>
 
-          {/* PARTE SUPERIOR: RAMOS TRONCALES / DISCIPLINARES */}
-          <div className="grid grid-cols-10 gap-2.5 items-start">
+          {/* PARTE SUPERIOR: RAMOS TRONCALES */}
+          <div className="flex gap-2.5 items-start">
             {semestersData.map(sem => (
-              <div key={sem.num} className="flex flex-col gap-2.5 min-h-[460px]">
+              <div key={sem.num} className="w-[140px] flex-shrink-0 flex flex-col gap-2.5 min-h-[460px]">
                 {sem.troncales.map(course => (
                   <CourseCard key={course.id} course={course} />
                 ))}
@@ -688,19 +713,19 @@ export default function App() {
             ))}
           </div>
 
-          {/* SEPARADOR VISUAL DE CURSOS TRANSVERSALES E IDIOMAS */}
-          <div className="my-6 flex items-center gap-3">
+          {/* SEPARADOR VISUAL DE CURSOS TRANSVERSALES */}
+          <div className="my-6 flex items-center gap-3 w-full">
             <div className="h-px bg-zinc-800 flex-1" />
-            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 whitespace-nowrap">
               Cursos Transversales & Idiomas
             </span>
             <div className="h-px bg-zinc-800 flex-1" />
           </div>
 
           {/* PARTE INFERIOR: RAMOS TRANSVERSALES E INGLÉS */}
-          <div className="grid grid-cols-10 gap-2.5 items-start">
+          <div className="flex gap-2.5 items-start">
             {semestersData.map(sem => (
-              <div key={sem.num} className="flex flex-col gap-2.5">
+              <div key={sem.num} className="w-[140px] flex-shrink-0 flex flex-col gap-2.5">
                 {sem.transversales.map(course => (
                   <CourseCard key={course.id} course={course} />
                 ))}
@@ -710,42 +735,42 @@ export default function App() {
         </div>
       </main>
 
-      {/* ================= TOOLTIP ESTABLE (SOLO APARECE TRAS 5 SEGUNDOS DE HOVER) ================= */}
-      {hoveredInfo && showTooltip && tooltipPos && (
+      {/* ================= TOOLTIP ESTABLE TRAS EXACTAMENTE 5 SEGUNDOS ================= */}
+      {tooltipData && (
         <div
           className="fixed pointer-events-none z-50 bg-[#121316]/95 border border-zinc-600 rounded-lg p-3 shadow-2xl text-left text-xs max-w-sm backdrop-blur-md animate-in fade-in duration-200"
           style={{
-            left: `${tooltipPos.left}px`,
-            top: `${tooltipPos.top}px`
+            left: `${tooltipData.pos.left}px`,
+            top: `${tooltipData.pos.top}px`
           }}
         >
           <div className="font-mono font-bold text-pink-400 text-xs mb-0.5">
-            Ramo N° {hoveredInfo.course.numero} • {hoveredInfo.course.codigo}
+            Ramo N° {tooltipData.course.numero} • {tooltipData.course.codigo}
           </div>
           <div className="font-bold text-white text-sm mb-1">
-            {hoveredInfo.course.nombre}
+            {tooltipData.course.nombre}
           </div>
           <p className="text-[11px] text-zinc-300 mb-2 leading-snug">
-            Este ramo tiene <strong className="text-white">{hoveredInfo.course.creditos} créditos</strong> SCT.
+            Este ramo tiene <strong className="text-white">{tooltipData.course.creditos} créditos</strong> SCT.
           </p>
           <div className="text-[10.5px] text-zinc-400 space-y-1 border-t border-zinc-700/60 pt-1.5">
             <div>
               <span className="text-orange-400 font-bold">Prerrequisitos: </span>
-              {hoveredInfo.course.prerrequisitos.length === 0
+              {tooltipData.course.prerrequisitos.length === 0
                 ? 'Ninguno (Inicial)'
-                : hoveredInfo.course.prerrequisitos.join(', ')}
+                : tooltipData.course.prerrequisitos.join(', ')}
             </div>
-            {hoveredInfo.course.correquisitos && hoveredInfo.course.correquisitos.length > 0 && (
+            {tooltipData.course.correquisitos && tooltipData.course.correquisitos.length > 0 && (
               <div>
                 <span className="text-rose-400 font-bold">Ligado con: </span>
-                {hoveredInfo.course.correquisitos.join(', ')}
+                {tooltipData.course.correquisitos.join(', ')}
               </div>
             )}
             <div>
               <span className="text-cyan-400 font-bold">Abre a futuro: </span>
-              {Array.from(hoveredInfo.unlocks).length === 0
+              {Array.from(directDependents.get(tooltipData.course.id) || []).length === 0
                 ? 'Ninguno posterior'
-                : Array.from(hoveredInfo.unlocks).join(', ')}
+                : Array.from(directDependents.get(tooltipData.course.id) || []).join(', ')}
             </div>
           </div>
         </div>
@@ -757,17 +782,23 @@ export default function App() {
 
           {/* Leyenda de Colores */}
           <div className="flex items-center gap-2.5 overflow-x-auto text-[11px] text-zinc-300 max-w-full">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#121316] border border-zinc-800 text-emerald-400 font-semibold">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Habilitado
+            </div>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#121316] border border-zinc-800 text-red-400 font-semibold">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Bloqueado
+            </div>
             {mallaData.categorias.map(cat => (
               <div
                 key={cat.id}
-                className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#121316] border border-zinc-800 whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#121316] border border-zinc-800 whitespace-nowrap"
                 title={cat.descripcion}
               >
                 <span
-                  className="w-3 h-3 rounded-full flex-shrink-0"
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: cat.colorHex }}
                 />
-                <span className="font-semibold text-zinc-200">{cat.nombre}</span>
+                <span className="text-zinc-300">{cat.nombre}</span>
               </div>
             ))}
           </div>
@@ -829,6 +860,30 @@ export default function App() {
 
             <div className="space-y-3 text-xs mt-3">
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
+                <span className="w-4 h-4 rounded-full bg-emerald-500 text-black font-black text-[9px] flex items-center justify-center">
+                  ✓
+                </span>
+                <div>
+                  <h4 className="font-bold text-emerald-400">Borde Verde / Círculo Verde</h4>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">
+                    Ramo o prerrequisito <strong>habilitado y aprobado</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
+                <span className="w-4 h-4 rounded-full bg-red-500 text-white font-black text-[9px] flex items-center justify-center">
+                  ✕
+                </span>
+                <div>
+                  <h4 className="font-bold text-red-400">Borde Rojo / Círculo Rojo</h4>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">
+                    Ramo o prerrequisito <strong>bloqueado o pendiente</strong> por aprobar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
                 <span className="w-4.5 h-4.5 rounded-full bg-white text-black font-black text-[10px] flex items-center justify-center">
                   #
                 </span>
@@ -836,23 +891,6 @@ export default function App() {
                   <h4 className="font-bold text-white">Número de serie del ramo</h4>
                   <p className="text-zinc-400 text-[11px] mt-0.5">
                     Cada ramo tiene un número correlativo oficial (del 1 al 45) en la esquina superior derecha.
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
-                <div className="flex gap-1">
-                  <span className="w-4 h-4 rounded-full bg-[#0284c7] text-white text-[9px] font-black flex items-center justify-center">
-                    1
-                  </span>
-                  <span className="w-4 h-4 rounded-full bg-emerald-400 text-black text-[9px] font-black flex items-center justify-center">
-                    7
-                  </span>
-                </div>
-                <div>
-                  <h4 className="font-bold text-white">Círculos de dependencias (Pie de tarjeta)</h4>
-                  <p className="text-zinc-400 text-[11px] mt-0.5">
-                    Indican el número del ramo del cual depende. Se ponen en verde si ya aprobaste ese prerrequisito.
                   </p>
                 </div>
               </div>
