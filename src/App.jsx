@@ -1,9 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
-  CheckCircle2,
-  Lock,
-  Unlock,
   RotateCcw,
   Star,
   Link as LinkIcon,
@@ -11,14 +8,12 @@ import {
   Sparkles,
   Search,
   X,
-  Info,
   ZoomIn,
-  ZoomOut,
-  Maximize2
+  ZoomOut
 } from 'lucide-react';
 import mallaData from './data/mallaEnfermeria.json';
 
-const STORAGE_KEY = 'malla_enfermeria_unab_aprobados_v3';
+const STORAGE_KEY = 'malla_enfermeria_unab_aprobados_v4';
 
 export default function App() {
   const [approved, setApproved] = useState(() => {
@@ -31,26 +26,34 @@ export default function App() {
   });
 
   const [hoveredCourseId, setHoveredCourseId] = useState(null);
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [highlightClinics, setHighlightClinics] = useState(false);
   const [search, setSearch] = useState('');
   const [showModalInfo, setShowModalInfo] = useState(false);
   const [showFastApproveModal, setShowFastApproveModal] = useState(false);
-  const [zoomLevel, setZoomLevel] = useState(88); // Zoom inicial compacto para ver toda la malla
+  const [zoomLevel, setZoomLevel] = useState(88);
 
+  const containerRef = useRef(null);
+  const cardElementsRef = useRef(new Map());
+
+  // Guardar en localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(approved));
     } catch (e) {
-      console.error('Error guardando progreso', e);
+      console.error(e);
     }
   }, [approved]);
 
-  // Mapa rápido de ramos
-  const courseMap = useMemo(() => {
-    const map = new Map();
-    mallaData.ramos.forEach(r => map.set(r.id, r));
-    return map;
+  // Mapa rápido de ramos por ID y por Número
+  const { courseMap, numberMap } = useMemo(() => {
+    const byId = new Map();
+    const byNum = new Map();
+    mallaData.ramos.forEach(r => {
+      byId.set(r.id, r);
+      byNum.set(r.numero, r);
+    });
+    return { courseMap: byId, numberMap: byNum };
   }, []);
 
   const totalCreditos = mallaData.totalCreditos;
@@ -66,14 +69,14 @@ export default function App() {
   const porcentajeCreditos = Math.round((creditosAprobados / totalCreditos) * 100);
   const porcentajeRamos = Math.round((approved.length / totalRamos) * 100);
 
-  // Confeti al completar
+  // Confeti al 100%
   useEffect(() => {
     if (approved.length === totalRamos && totalRamos > 0) {
-      confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+      confetti({ particleCount: 160, spread: 100, origin: { y: 0.6 } });
     }
   }, [approved.length, totalRamos]);
 
-  // Dependencias directas
+  // Dependencias directas (ramos que abre)
   const directDependents = useMemo(() => {
     const deps = new Map();
     mallaData.ramos.forEach(r => {
@@ -127,12 +130,15 @@ export default function App() {
   const handleToggleCourse = (course) => {
     const isApp = approved.includes(course.id);
     if (isApp) {
+      // Desmarcar en cascada los que dependen de él
       const dependentIds = getAllDescendants(course.id);
       const toRemove = [course.id, ...dependentIds.filter(id => approved.includes(id))];
       setApproved(prev => prev.filter(id => !toRemove.includes(id)));
     } else {
+      // Marcar ramo + auto-marcar prerrequisitos necesarios
       const missingAncestors = getAllAncestors(course.id).filter(id => !approved.includes(id));
       const toAdd = [course.id, ...missingAncestors];
+      // Si tiene co-requisitos ligados (línea roja punteada)
       if (course.correquisitos && course.correquisitos.length > 0) {
         course.correquisitos.forEach(coId => {
           if (!approved.includes(coId) && !toAdd.includes(coId)) {
@@ -158,19 +164,90 @@ export default function App() {
     setShowFastApproveModal(false);
   };
 
-  // Conjuntos de relaciones para hover ultra rápido (0ms latency, 60fps)
-  const hoverData = useMemo(() => {
+  // Datos del ramo hovered
+  const hoveredInfo = useMemo(() => {
     if (!hoveredCourseId) return null;
     const current = courseMap.get(hoveredCourseId);
     if (!current) return null;
 
-    return {
-      activeId: hoveredCourseId,
-      prereqs: new Set(current.prerrequisitos || []),
-      coreqs: new Set(current.correquisitos || []),
-      unlocks: new Set(directDependents.get(hoveredCourseId) || [])
-    };
+    const prereqs = new Set(current.prerrequisitos || []);
+    const coreqs = new Set(current.correquisitos || []);
+    const unlocks = new Set(directDependents.get(hoveredCourseId) || []);
+
+    return { course: current, prereqs, coreqs, unlocks };
   }, [hoveredCourseId, courseMap, directDependents]);
+
+  // Flechas SVG dinámicas calculadas solo para el ramo activo en hover
+  const activeArrows = useMemo(() => {
+    if (!hoveredInfo || !containerRef.current) return [];
+    const { course, prereqs, coreqs, unlocks } = hoveredInfo;
+    const activeEl = cardElementsRef.current.get(course.id);
+    if (!activeEl) return [];
+
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const aRect = activeEl.getBoundingClientRect();
+
+    const activeBox = {
+      left: aRect.left - containerRect.left,
+      right: aRect.right - containerRect.left,
+      top: aRect.top - containerRect.top,
+      bottom: aRect.bottom - containerRect.top,
+      centerX: aRect.left - containerRect.left + aRect.width / 2,
+      centerY: aRect.top - containerRect.top + aRect.height / 2
+    };
+
+    const arrows = [];
+
+    // 1. Flechas NARANJAS desde los Prerrequisitos hacia el ramo activo
+    prereqs.forEach(prereqId => {
+      const el = cardElementsRef.current.get(prereqId);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        arrows.push({
+          id: `pre-${prereqId}-${course.id}`,
+          from: { x: r.right - containerRect.left, y: r.top - containerRect.top + r.height / 2 },
+          to: { x: activeBox.left, y: activeBox.centerY },
+          color: '#f97316', // Naranja como en la captura
+          strokeWidth: 3,
+          dashed: false
+        });
+      }
+    });
+
+    // 2. Flechas AZULES desde el ramo activo hacia los que ABRE
+    unlocks.forEach(unlockId => {
+      const el = cardElementsRef.current.get(unlockId);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        arrows.push({
+          id: `unl-${course.id}-${unlockId}`,
+          from: { x: activeBox.right, y: activeBox.centerY },
+          to: { x: r.left - containerRect.left, y: r.top - containerRect.top + r.height / 2 },
+          color: '#38bdf8', // Azul celeste como en la captura
+          strokeWidth: 3,
+          dashed: true
+        });
+      }
+    });
+
+    // 3. Flechas ROJAS hacia los Co-requisitos ligados
+    coreqs.forEach(coId => {
+      const el = cardElementsRef.current.get(coId);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        arrows.push({
+          id: `co-${course.id}-${coId}`,
+          from: { x: activeBox.centerX, y: activeBox.bottom },
+          to: { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top },
+          color: '#ef4444', // Rojo punteado
+          strokeWidth: 3,
+          dashed: true
+        });
+      }
+    });
+
+    return arrows;
+  }, [hoveredInfo]);
 
   // Estructura de semestres (1 a 10)
   const semestersData = useMemo(() => {
@@ -178,10 +255,10 @@ export default function App() {
     const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
     for (let sem = 1; sem <= 10; sem++) {
-      const allSemCourses = mallaData.ramos.filter(r => r.semestre === sem);
-      const troncales = allSemCourses.filter(r => r.tipo === 'troncal');
-      const transversales = allSemCourses.filter(r => r.tipo === 'transversal' || r.tipo === 'idioma');
-      const totalCreds = allSemCourses.reduce((sum, c) => sum + c.creditos, 0);
+      const allCourses = mallaData.ramos.filter(r => r.semestre === sem);
+      const troncales = allCourses.filter(r => r.tipo === 'troncal');
+      const transversales = allCourses.filter(r => r.tipo === 'transversal' || r.tipo === 'idioma');
+      const totalCreds = allCourses.reduce((sum, c) => sum + c.creditos, 0);
 
       semArray.push({
         num: sem,
@@ -195,71 +272,67 @@ export default function App() {
     return semArray;
   }, []);
 
-  // Componente de Tarjeta individual de Ramo (estilo malla-fic pero con colores de Enfermería UNAB)
+  // Componente de Tarjeta con diseño idéntico a las capturas
   const CourseCard = ({ course }) => {
     const isApp = approved.includes(course.id);
     const unlocked = isUnlocked(course);
-    const isHovered = hoverData?.activeId === course.id;
-    const isPrereq = hoverData?.prereqs.has(course.id);
-    const isCoreq = hoverData?.coreqs.has(course.id);
-    const isUnlockTarget = hoverData?.unlocks.has(course.id);
+    const isHovered = hoveredInfo?.course.id === course.id;
+    const isPrereq = hoveredInfo?.prereqs.has(course.id);
+    const isCoreq = hoveredInfo?.coreqs.has(course.id);
+    const isUnlockTarget = hoveredInfo?.unlocks.has(course.id);
 
-    // Búsqueda
-    const matchesSearch = search.trim() === '' || 
-      course.codigo.toLowerCase().includes(search.toLowerCase()) || 
-      course.nombre.toLowerCase().includes(search.toLowerCase());
-
-    // Highlight campos clínicos
     const isClinicalHighlight = highlightClinics && course.campoClinico;
     const isDimmedByClinical = highlightClinics && !course.campoClinico;
 
-    // Config de categoría
-    const cat = mallaData.categorias.find(c => c.id === course.categoria);
-
-    // Estado visual dinámico
-    let ringClass = 'border border-zinc-700/80';
-    let bgClass = cat?.bgCard || 'bg-zinc-900 border-zinc-700 text-white';
-    let opacityClass = 'opacity-100';
-
+    // Resaltado de bordes
+    let ringStyle = 'border border-zinc-800';
     if (isHovered) {
-      ringClass = 'ring-2 ring-white scale-[1.03] shadow-2xl z-20 brightness-125';
+      ringStyle = 'ring-2 ring-white scale-[1.04] shadow-2xl z-30 brightness-110';
     } else if (isPrereq) {
-      ringClass = 'ring-2 ring-emerald-400 bg-emerald-950/90 border-emerald-400 scale-[1.02] shadow-lg shadow-emerald-500/30 z-10';
-    } else if (isCoreq) {
-      ringClass = 'ring-2 ring-rose-500 border-dashed border-rose-500 bg-rose-950/90 scale-[1.02] shadow-lg shadow-rose-500/30 z-10';
+      ringStyle = 'ring-3 ring-orange-500 scale-[1.02] shadow-lg shadow-orange-500/40 z-20';
     } else if (isUnlockTarget) {
-      ringClass = 'ring-2 ring-purple-400 bg-purple-950/90 border-purple-400 scale-[1.02] shadow-lg shadow-purple-500/30 z-10';
+      ringStyle = 'ring-3 ring-cyan-400 scale-[1.02] shadow-lg shadow-cyan-500/40 z-20';
+    } else if (isCoreq) {
+      ringStyle = 'ring-3 ring-red-500 border-dashed scale-[1.02] shadow-lg shadow-red-500/40 z-20';
     } else if (isClinicalHighlight) {
-      ringClass = 'ring-2 ring-amber-400 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-10 brightness-110';
+      ringStyle = 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.7)] z-10 brightness-115';
     }
 
-    if (isApp) {
-      bgClass = 'bg-[#18181b]/90 border-zinc-800 text-zinc-400';
-      opacityClass = 'opacity-55 hover:opacity-90';
-    } else if (!unlocked) {
-      bgClass = 'bg-[#09090b]/80 border-zinc-800/80 text-zinc-500';
-      opacityClass = 'opacity-65 hover:opacity-85';
+    let opacityStyle = 'opacity-100';
+    if (!unlocked && !isApp) {
+      opacityStyle = 'opacity-60 hover:opacity-85';
     }
-
-    if (!matchesSearch || isDimmedByClinical) {
-      opacityClass = 'opacity-20 pointer-events-none';
+    if (isDimmedByClinical) {
+      opacityStyle = 'opacity-25 pointer-events-none';
     }
 
     return (
       <div
+        ref={el => {
+          if (el) cardElementsRef.current.set(course.id, el);
+          else cardElementsRef.current.delete(course.id);
+        }}
         onClick={() => handleToggleCourse(course)}
-        onMouseEnter={() => setHoveredCourseId(course.id)}
+        onMouseEnter={(e) => {
+          setHoveredCourseId(course.id);
+          setMousePos({ x: e.clientX, y: e.clientY });
+        }}
+        onMouseMove={(e) => {
+          setMousePos({ x: e.clientX, y: e.clientY });
+        }}
         onMouseLeave={() => setHoveredCourseId(null)}
         className={`
-          relative w-[122px] h-[78px] rounded-lg p-1.5 flex flex-col justify-between cursor-pointer transition-all duration-100 select-none
-          ${bgClass}
-          ${ringClass}
-          ${opacityClass}
+          relative w-[124px] h-[78px] rounded flex flex-col justify-between cursor-pointer transition-all duration-75 select-none overflow-hidden
+          ${ringStyle}
+          ${opacityStyle}
         `}
+        style={{
+          boxShadow: isHovered ? '0 10px 25px rgba(0,0,0,0.8)' : '0 2px 5px rgba(0,0,0,0.4)'
+        }}
       >
-        {/* Cabecera de la tarjeta: Código + Estrella / Co-requisito */}
-        <div className="flex items-center justify-between text-[10px] leading-none mb-0.5">
-          <span className="font-mono font-black text-white/90 tracking-tight">
+        {/* ================= BARRA SUPERIOR (CÓDIGO + NÚMERO DE SERIE EN CÍRCULO BLANCO) ================= */}
+        <div className="bg-[#121214] px-1.5 py-0.5 flex items-center justify-between border-b border-black/30">
+          <span className="font-mono text-[10px] font-black text-white tracking-tight">
             {course.codigo}
           </span>
 
@@ -267,44 +340,81 @@ export default function App() {
             {/* Estrella de Campo Clínico */}
             {course.campoClinico && (
               <span title="Campo Clínico Obligatorio" className="text-amber-400">
-                <Star className="w-3 h-3 fill-amber-400" />
+                <Star className="w-2.5 h-2.5 fill-amber-400" />
               </span>
             )}
 
-            {/* Co-requisito Ligado */}
-            {course.correquisitos && course.correquisitos.length > 0 && (
-              <span title={`Co-requisito ligado con: ${course.correquisitos.join(', ')}`} className="text-rose-400">
-                <LinkIcon className="w-3 h-3" />
-              </span>
-            )}
+            {/* Número de serie correlativo del ramo (en círculo blanco) */}
+            <span
+              className="w-4 h-4 rounded-full bg-white text-black font-black text-[9px] flex items-center justify-center shadow-sm"
+              title={`Número de ramo: ${course.numero}`}
+            >
+              {course.numero}
+            </span>
           </div>
         </div>
 
-        {/* Nombre del Ramo (Blanco, claro, centrado) */}
-        <div className={`text-[10.5px] font-bold text-center leading-[1.15] line-clamp-3 my-auto ${isApp ? 'line-through text-zinc-400' : 'text-white'}`}>
-          {course.nombre}
-        </div>
+        {/* ================= CUERPO CENTRAL (COLOR PROPIO DEL RAMO + NOMBRE) ================= */}
+        <div
+          className="flex-1 px-1 flex items-center justify-center relative overflow-hidden"
+          style={{ backgroundColor: course.color }}
+        >
+          <div
+            className="text-[10px] font-bold text-center leading-[1.15] line-clamp-3 z-10"
+            style={{ color: course.textColor || '#ffffff' }}
+          >
+            {course.nombre}
+          </div>
 
-        {/* Pie de tarjeta: Indicadores de prerrequisito (círculos) + Créditos */}
-        <div className="flex items-center justify-between text-[9px] pt-0.5 border-t border-white/10 mt-0.5">
-          {/* Círculos de prerrequisitos */}
-          <div className="flex items-center gap-0.5" title={`Prerrequisitos: ${course.prerrequisitos.join(', ') || 'Ninguno'}`}>
-            {course.prerrequisitos.length === 0 ? (
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-600/50" />
-            ) : (
-              course.prerrequisitos.map(reqId => (
-                <span
-                  key={reqId}
-                  className={`w-1.5 h-1.5 rounded-full ${
-                    approved.includes(reqId) ? 'bg-emerald-400' : 'bg-red-400'
-                  }`}
+          {/* ================= FRANJA ROJA DIAGONAL AL CLIQUEAR (RAMO APROBADO) ================= */}
+          {isApp && (
+            <div className="absolute inset-0 pointer-events-none z-20">
+              <svg className="w-full h-full">
+                <line
+                  x1="0"
+                  y1="0"
+                  x2="100%"
+                  y2="100%"
+                  stroke="#dc2626"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
                 />
-              ))
+              </svg>
+            </div>
+          )}
+
+          {/* Sombra de aprobado */}
+          {isApp && <div className="absolute inset-0 bg-black/40 z-10" />}
+        </div>
+
+        {/* ================= BARRA INFERIOR (DEPENDENCIAS / NÚMEROS + CRÉDITOS) ================= */}
+        <div className="bg-[#121214] px-1.5 py-0.5 flex items-center justify-between border-t border-black/30">
+          {/* Círculos con los números de las dependencias */}
+          <div className="flex items-center gap-1 min-w-0" title={`Depende de los ramos N°: ${course.prerrequisitosNumeros.join(', ') || 'Ninguno'}`}>
+            {course.prerrequisitosNumeros.length === 0 ? (
+              <span className="w-1.5 h-1.5 rounded-full bg-zinc-700/60" />
+            ) : (
+              course.prerrequisitosNumeros.map(num => {
+                const reqCourse = numberMap.get(num);
+                const reqApp = reqCourse ? approved.includes(reqCourse.id) : false;
+                return (
+                  <span
+                    key={num}
+                    className={`w-3.5 h-3.5 rounded-full text-[8px] font-black flex items-center justify-center border ${
+                      reqApp
+                        ? 'bg-emerald-400 text-black border-emerald-300'
+                        : 'bg-[#0284c7] text-white border-sky-300'
+                    }`}
+                  >
+                    {num}
+                  </span>
+                );
+              })
             )}
           </div>
 
-          {/* Créditos */}
-          <span className="font-mono font-bold text-white/80 bg-black/40 px-1 py-0.2 rounded text-[8.5px]">
+          {/* Créditos en cajita gris */}
+          <span className="font-mono text-[8.5px] font-bold text-zinc-300 bg-zinc-800 px-1 py-0.2 rounded border border-zinc-700">
             {course.creditos}
           </span>
         </div>
@@ -327,7 +437,7 @@ export default function App() {
                 Malla Interactiva Enfermería UNAB
               </h1>
               <p className="text-[11px] text-zinc-400 hidden sm:block">
-                10 Semestres • Árbol de Requisitos, Co-requisitos Ligados y Campos Clínicos
+                Colores oficiales, números de serie correlativos, dependencias y franja de aprobado
               </p>
             </div>
           </div>
@@ -339,7 +449,7 @@ export default function App() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Buscar ramo..."
+                placeholder="Buscar ramo o código..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="bg-zinc-900 border border-zinc-700/80 rounded-lg pl-7 pr-3 py-1 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 w-36 md:w-48"
@@ -376,12 +486,12 @@ export default function App() {
               </button>
             </div>
 
-            {/* Botón Resaltar Campos Clínicos (con brillo, sin ocultar los demás) */}
+            {/* Botón Resaltar Campos Clínicos (con brillo, sin ocultar) */}
             <button
               onClick={() => setHighlightClinics(!highlightClinics)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
                 highlightClinics
-                  ? 'bg-amber-500/30 text-amber-300 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.4)]'
+                  ? 'bg-amber-500/30 text-amber-300 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.5)]'
                   : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:bg-zinc-800'
               }`}
             >
@@ -411,37 +521,104 @@ export default function App() {
         </div>
       </header>
 
-      {/* ================= TABLA LIMPIA ESTILO MALLA-FIC ================= */}
+      {/* ================= CONTENEDOR PRINCIPAL CON FLECHAS SVG Y GRID ================= */}
       <main className="flex-1 overflow-x-auto overflow-y-visible px-4 py-4 flex justify-center">
         <div
-          className="inline-block transition-transform duration-150 origin-top"
+          ref={containerRef}
+          className="relative inline-block transition-transform duration-100 origin-top"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
-          {/* Cabecera de Años (Año 1, Año 2, Año 3, Año 4, Año 5) */}
+          {/* ================= CAPA DE FLECHAS SVG DINÁMICAS (AL PASAR EL CURSOR) ================= */}
+          <svg
+            className="absolute inset-0 pointer-events-none z-30 w-full h-full"
+            style={{ minWidth: '100%', minHeight: '100%' }}
+          >
+            <defs>
+              <marker
+                id="arrow-orange"
+                markerWidth="8"
+                markerHeight="8"
+                refX="6"
+                refY="4"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 4, 0 8" fill="#f97316" />
+              </marker>
+              <marker
+                id="arrow-cyan"
+                markerWidth="8"
+                markerHeight="8"
+                refX="6"
+                refY="4"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 4, 0 8" fill="#38bdf8" />
+              </marker>
+              <marker
+                id="arrow-red"
+                markerWidth="8"
+                markerHeight="8"
+                refX="6"
+                refY="4"
+                orient="auto"
+              >
+                <polygon points="0 0, 8 4, 0 8" fill="#ef4444" />
+              </marker>
+            </defs>
+
+            {activeArrows.map(arrow => {
+              const dx = arrow.to.x - arrow.from.x;
+              const control1 = { x: arrow.from.x + dx * 0.45, y: arrow.from.y };
+              const control2 = { x: arrow.to.x - dx * 0.45, y: arrow.to.y };
+              const d = `M ${arrow.from.x} ${arrow.from.y} C ${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${arrow.to.x} ${arrow.to.y}`;
+
+              let markerUrl = 'url(#arrow-cyan)';
+              if (arrow.color === '#f97316') markerUrl = 'url(#arrow-orange)';
+              if (arrow.color === '#ef4444') markerUrl = 'url(#arrow-red)';
+
+              return (
+                <g key={arrow.id}>
+                  {/* Sombra de contraste */}
+                  <path d={d} fill="none" stroke="#000000" strokeWidth="5" opacity="0.8" />
+                  {/* Línea de flecha */}
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke={arrow.color}
+                    strokeWidth={arrow.strokeWidth}
+                    strokeDasharray={arrow.dashed ? '6,4' : 'none'}
+                    markerEnd={markerUrl}
+                  />
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Cabecera de Años */}
           <div className="grid grid-cols-10 gap-2 mb-1.5 text-center">
-            <div className="col-span-2 bg-zinc-800/90 border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="col-span-2 bg-[#18181b] border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 1
             </div>
-            <div className="col-span-2 bg-zinc-800/90 border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="col-span-2 bg-[#18181b] border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 2
             </div>
-            <div className="col-span-2 bg-zinc-800/90 border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="col-span-2 bg-[#18181b] border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 3
             </div>
-            <div className="col-span-2 bg-zinc-800/90 border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="col-span-2 bg-[#18181b] border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 4
             </div>
-            <div className="col-span-2 bg-zinc-800/90 border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="col-span-2 bg-[#18181b] border border-zinc-700 py-1 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 5
             </div>
           </div>
 
-          {/* Cabecera de Semestres (I, II, III, IV, V, VI, VII, VIII, IX, X) */}
+          {/* Cabecera de Semestres (I a X) */}
           <div className="grid grid-cols-10 gap-2 mb-3 text-center">
             {semestersData.map(sem => (
               <div
                 key={sem.num}
-                className="bg-zinc-900/90 border border-zinc-800 py-0.5 rounded text-[11px] font-mono font-bold text-zinc-300"
+                className="bg-[#121214] border border-zinc-800 py-0.5 rounded text-[11px] font-mono font-bold text-zinc-300"
               >
                 {sem.roman}
               </div>
@@ -451,7 +628,7 @@ export default function App() {
           {/* PARTE SUPERIOR: RAMOS TRONCALES / DISCIPLINARES */}
           <div className="grid grid-cols-10 gap-2 items-start">
             {semestersData.map(sem => (
-              <div key={sem.num} className="flex flex-col gap-2 min-h-[380px]">
+              <div key={sem.num} className="flex flex-col gap-2 min-h-[420px]">
                 {sem.troncales.map(course => (
                   <CourseCard key={course.id} course={course} />
                 ))}
@@ -459,7 +636,7 @@ export default function App() {
             ))}
           </div>
 
-          {/* SEPARADOR VISUAL ELEGANTE */}
+          {/* SEPARADOR VISUAL DE CURSOS TRANSVERSALES E IDIOMAS */}
           <div className="my-5 flex items-center gap-3">
             <div className="h-px bg-zinc-800 flex-1" />
             <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
@@ -468,7 +645,7 @@ export default function App() {
             <div className="h-px bg-zinc-800 flex-1" />
           </div>
 
-          {/* PARTE INFERIOR: RAMOS TRANSVERSALES E INGLÉS (SECCIÓN AJENA ABAJO) */}
+          {/* PARTE INFERIOR: RAMOS TRANSVERSALES E INGLÉS */}
           <div className="grid grid-cols-10 gap-2 items-start">
             {semestersData.map(sem => (
               <div key={sem.num} className="flex flex-col gap-2">
@@ -481,16 +658,57 @@ export default function App() {
         </div>
       </main>
 
-      {/* ================= BARRA INFERIOR DE LEYENDA Y MÉTRICAS ================= */}
+      {/* ================= TOOLTIP FLOTANTE AL PASAR EL CURSOR (COMO EN LA IMAGEN 2) ================= */}
+      {hoveredInfo && (
+        <div
+          className="fixed pointer-events-none z-50 bg-[#121214]/95 border border-zinc-600 rounded-lg p-2.5 shadow-2xl text-left text-xs max-w-xs backdrop-blur-md"
+          style={{
+            left: `${Math.min(window.innerWidth - 300, mousePos.x + 18)}px`,
+            top: `${Math.min(window.innerHeight - 150, mousePos.y + 18)}px`
+          }}
+        >
+          <div className="font-mono font-bold text-pink-400 text-[11px] mb-0.5">
+            Ramo N° {hoveredInfo.course.numero} • {hoveredInfo.course.codigo}
+          </div>
+          <div className="font-bold text-white text-xs mb-1">
+            {hoveredInfo.course.nombre}
+          </div>
+          <p className="text-[10.5px] text-zinc-300 mb-1.5 leading-snug">
+            Este ramo tiene <strong className="text-white">{hoveredInfo.course.creditos} créditos</strong> SCT.
+          </p>
+          <div className="text-[10px] text-zinc-400 space-y-0.5 border-t border-zinc-700/60 pt-1">
+            <div>
+              <span className="text-orange-400 font-bold">Prerrequisitos: </span>
+              {hoveredInfo.course.prerrequisitos.length === 0
+                ? 'Ninguno (Inicial)'
+                : hoveredInfo.course.prerrequisitos.join(', ')}
+            </div>
+            {hoveredInfo.course.correquisitos && hoveredInfo.course.correquisitos.length > 0 && (
+              <div>
+                <span className="text-rose-400 font-bold">Ligado con: </span>
+                {hoveredInfo.course.correquisitos.join(', ')}
+              </div>
+            )}
+            <div>
+              <span className="text-cyan-400 font-bold">Abre a futuro: </span>
+              {Array.from(hoveredInfo.unlocks).length === 0
+                ? 'Ninguno posterior'
+                : Array.from(hoveredInfo.unlocks).join(', ')}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= BARRA INFERIOR DE ESTADÍSTICAS ================= */}
       <footer className="fixed bottom-0 left-0 right-0 z-30 bg-[#0a0a0c]/98 backdrop-blur-md border-t border-zinc-800 p-3 shadow-2xl">
         <div className="max-w-[1920px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3 px-2">
 
-          {/* Leyenda de Colores de Secciones */}
+          {/* Leyenda de Colores */}
           <div className="flex items-center gap-2 overflow-x-auto text-[11px] text-zinc-300 max-w-full">
             {mallaData.categorias.map(cat => (
               <div
                 key={cat.id}
-                className="flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-900 border border-zinc-800 whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#121214] border border-zinc-800 whitespace-nowrap"
                 title={cat.descripcion}
               >
                 <span
@@ -559,31 +777,40 @@ export default function App() {
 
             <div className="space-y-3 text-xs mt-3">
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
-                <div className="w-3 h-3 rounded-full bg-emerald-400 flex-shrink-0 mt-0.5" />
+                <span className="w-4 h-4 rounded-full bg-white text-black font-black text-[9px] flex items-center justify-center">
+                  #
+                </span>
                 <div>
-                  <h4 className="font-bold text-white">Prerrequisitos previos</h4>
+                  <h4 className="font-bold text-white">Número de serie del ramo</h4>
                   <p className="text-zinc-400 text-[11px] mt-0.5">
-                    Al pasar el cursor sobre cualquier ramo, sus <strong>prerrequisitos obligatorios se iluminan en verde</strong>.
+                    Cada ramo tiene un número correlativo oficial (del 1 al 45) en la esquina superior derecha.
                   </p>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/50 flex gap-3 items-start">
-                <div className="w-3 h-3 rounded-full bg-purple-400 flex-shrink-0 mt-0.5" />
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
+                <div className="flex gap-1">
+                  <span className="w-3.5 h-3.5 rounded-full bg-[#0284c7] text-white text-[8px] font-black flex items-center justify-center">
+                    1
+                  </span>
+                  <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 text-black text-[8px] font-black flex items-center justify-center">
+                    7
+                  </span>
+                </div>
                 <div>
-                  <h4 className="font-bold text-purple-300">Ramos que desbloquea</h4>
-                  <p className="text-zinc-300 text-[11px] mt-0.5">
-                    Al pasar el cursor sobre un ramo, los <strong>ramos futuros que desbloquearás se iluminan en morado</strong>.
+                  <h4 className="font-bold text-white">Círculos de dependencias (Pie de tarjeta)</h4>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">
+                    Indican el número del ramo del cual depende. Se ponen en verde si ya aprobaste ese prerrequisito.
                   </p>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/50 flex gap-3 items-start">
-                <LinkIcon className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
+                <div className="w-4 h-4 text-rose-500 font-black">/</div>
                 <div>
-                  <h4 className="font-bold text-rose-300">Co-requisitos Ligados (Línea roja punteada del PDF)</h4>
-                  <p className="text-zinc-300 text-[11px] mt-0.5">
-                    Deben ser tomados <strong>al mismo tiempo de manera obligatoria</strong> (no se puede tomar solo uno). Se iluminan con borde punteado rojo.
+                  <h4 className="font-bold text-rose-400">Franja roja diagonal (Aprobado)</h4>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">
+                    Al hacer clic en un ramo, se tacha con una franja roja diagonal que marca que está aprobado.
                   </p>
                 </div>
               </div>
@@ -591,9 +818,9 @@ export default function App() {
               <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/50 flex gap-3 items-start">
                 <Star className="w-4 h-4 text-amber-400 fill-amber-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-bold text-amber-300">Estrella en esquina superior derecha</h4>
+                  <h4 className="font-bold text-amber-300">Estrella dorada (Campo Clínico)</h4>
                   <p className="text-zinc-300 text-[11px] mt-0.5">
-                    Indica que el ramo posee componente de <strong>campo clínico obligatorio</strong>.
+                    Indica que el ramo posee componente obligatorio de <strong>campo clínico asistencial</strong>.
                   </p>
                 </div>
               </div>
@@ -621,7 +848,7 @@ export default function App() {
             </button>
 
             <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-400" />
+              <Sparkles className="w-5 h-5 text-blue-400" />
               Aprobación Rápida de Semestres
             </h3>
             <p className="text-xs text-zinc-400 mb-4">
