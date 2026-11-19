@@ -27,6 +27,7 @@ export default function App() {
 
   const [hoveredCourseId, setHoveredCourseId] = useState(null);
   const [tooltipPos, setTooltipPos] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
   const [highlightClinics, setHighlightClinics] = useState(false);
   const [search, setSearch] = useState('');
   const [showModalInfo, setShowModalInfo] = useState(false);
@@ -35,6 +36,7 @@ export default function App() {
 
   const containerRef = useRef(null);
   const cardElementsRef = useRef(new Map());
+  const tooltipTimerRef = useRef(null);
 
   // Guardar en localStorage
   useEffect(() => {
@@ -44,6 +46,13 @@ export default function App() {
       console.error(e);
     }
   }, [approved]);
+
+  // Limpiar timer de tooltip al desmontar
+  useEffect(() => {
+    return () => {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    };
+  }, []);
 
   // Mapa rápido de ramos por ID y por Número
   const { courseMap, numberMap } = useMemo(() => {
@@ -174,7 +183,7 @@ export default function App() {
     return { course: current, prereqs, coreqs, unlocks };
   }, [hoveredCourseId, courseMap, directDependents]);
 
-  // Flechas SVG dinámicas (calculadas SOLO una vez al entrar en el ramo con el ratón)
+  // Flechas SVG dinámicas, finas y estables (Física suavizada con Bezier optimizado)
   const activeArrows = useMemo(() => {
     if (!hoveredInfo || !containerRef.current) return [];
     const { course, prereqs, coreqs, unlocks } = hoveredInfo;
@@ -195,50 +204,71 @@ export default function App() {
 
     const arrows = [];
 
-    // Flechas NARANJAS desde los Prerrequisitos hacia el ramo activo
+    // 1. Flechas NARANJAS (Prerrequisitos previos apuntan hacia el ramo activo)
     prereqs.forEach(prereqId => {
       const el = cardElementsRef.current.get(prereqId);
       if (el) {
         const r = el.getBoundingClientRect();
+        const fromX = r.right - containerRect.left;
+        const fromY = r.top - containerRect.top + r.height / 2;
+        const toX = activeBox.left;
+        const toY = activeBox.centerY;
+
+        const dx = Math.abs(toX - fromX);
+        const curve = Math.min(dx * 0.45, 110);
+
         arrows.push({
           id: `pre-${prereqId}-${course.id}`,
-          from: { x: r.right - containerRect.left, y: r.top - containerRect.top + r.height / 2 },
-          to: { x: activeBox.left, y: activeBox.centerY },
+          d: `M ${fromX} ${fromY} C ${fromX + curve} ${fromY}, ${toX - curve} ${toY}, ${toX} ${toY}`,
           color: '#f97316',
-          strokeWidth: 3.5,
-          dashed: false
+          dashed: false,
+          strokeWidth: 2
         });
       }
     });
 
-    // Flechas AZULES desde el ramo activo hacia los que ABRE
+    // 2. Flechas CELESTES (Ramos que abre hacia el futuro)
     unlocks.forEach(unlockId => {
       const el = cardElementsRef.current.get(unlockId);
       if (el) {
         const r = el.getBoundingClientRect();
+        const fromX = activeBox.right;
+        const fromY = activeBox.centerY;
+        const toX = r.left - containerRect.left;
+        const toY = r.top - containerRect.top + r.height / 2;
+
+        const dx = Math.abs(toX - fromX);
+        const curve = Math.min(dx * 0.45, 110);
+
         arrows.push({
           id: `unl-${course.id}-${unlockId}`,
-          from: { x: activeBox.right, y: activeBox.centerY },
-          to: { x: r.left - containerRect.left, y: r.top - containerRect.top + r.height / 2 },
+          d: `M ${fromX} ${fromY} C ${fromX + curve} ${fromY}, ${toX - curve} ${toY}, ${toX} ${toY}`,
           color: '#38bdf8',
-          strokeWidth: 3.5,
-          dashed: true
+          dashed: true,
+          strokeWidth: 2
         });
       }
     });
 
-    // Flechas ROJAS hacia los Co-requisitos ligados
+    // 3. Flechas ROJAS (Co-requisitos ligados simultáneos)
     coreqs.forEach(coId => {
       const el = cardElementsRef.current.get(coId);
       if (el) {
         const r = el.getBoundingClientRect();
+        const fromX = activeBox.centerX;
+        const fromY = activeBox.bottom;
+        const toX = r.left - containerRect.left + r.width / 2;
+        const toY = r.top - containerRect.top;
+
+        const dy = Math.abs(toY - fromY);
+        const curve = Math.min(dy * 0.4, 50);
+
         arrows.push({
           id: `co-${course.id}-${coId}`,
-          from: { x: activeBox.centerX, y: activeBox.bottom },
-          to: { x: r.left - containerRect.left + r.width / 2, y: r.top - containerRect.top },
+          d: `M ${fromX} ${fromY} C ${fromX} ${fromY + curve}, ${toX} ${toY - curve}, ${toX} ${toY}`,
           color: '#ef4444',
-          strokeWidth: 3.5,
-          dashed: true
+          dashed: true,
+          strokeWidth: 2
         });
       }
     });
@@ -269,22 +299,41 @@ export default function App() {
     return semArray;
   }, []);
 
-  // Manejador ultra fluido al entrar con el mouse (calcula tooltip y arrows de una sola vez)
+  // Manejo de Hover: las flechas e iluminaciones aparecen DE INMEDIATO (0ms),
+  // pero el tooltip de información detallada espera 5 SEGUNDOS para no ser molesto.
   const handleMouseEnterCard = (course, event) => {
     setHoveredCourseId(course.id);
+
+    // Cancelar cualquier temporizador previo
+    if (tooltipTimerRef.current) {
+      clearTimeout(tooltipTimerRef.current);
+    }
+    setShowTooltip(false);
+
     const rect = event.currentTarget.getBoundingClientRect();
-    setTooltipPos({
+    const pos = {
       top: rect.bottom + 8,
-      left: Math.max(16, Math.min(window.innerWidth - 320, rect.left - 40))
-    });
+      left: Math.max(16, Math.min(window.innerWidth - 320, rect.left - 30))
+    };
+
+    // Temporizador de 5 segundos para desplegar la información completa
+    tooltipTimerRef.current = setTimeout(() => {
+      setTooltipPos(pos);
+      setShowTooltip(true);
+    }, 5000);
   };
 
   const handleMouseLeaveCard = () => {
+    if (tooltipTimerRef.current) {
+      clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = null;
+    }
     setHoveredCourseId(null);
+    setShowTooltip(false);
     setTooltipPos(null);
   };
 
-  // Componente de Tarjeta con dimensiones amplias y cómodas
+  // Componente de Tarjeta
   const CourseCard = ({ course }) => {
     const isApp = approved.includes(course.id);
     const unlocked = isUnlocked(course);
@@ -296,18 +345,18 @@ export default function App() {
     const isClinicalHighlight = highlightClinics && course.campoClinico;
     const isDimmedByClinical = highlightClinics && !course.campoClinico;
 
-    // Resaltado de bordes
+    // Resaltado de bordes fino y limpio
     let ringStyle = 'border border-zinc-800';
     if (isHovered) {
-      ringStyle = 'ring-3 ring-white scale-[1.03] shadow-2xl z-30 brightness-110';
+      ringStyle = 'ring-2 ring-white scale-[1.02] shadow-xl z-30 brightness-110';
     } else if (isPrereq) {
-      ringStyle = 'ring-3 ring-orange-500 scale-[1.02] shadow-lg shadow-orange-500/50 z-20';
+      ringStyle = 'ring-2 ring-orange-500 scale-[1.01] shadow-md shadow-orange-500/40 z-20';
     } else if (isUnlockTarget) {
-      ringStyle = 'ring-3 ring-cyan-400 scale-[1.02] shadow-lg shadow-cyan-500/50 z-20';
+      ringStyle = 'ring-2 ring-cyan-400 scale-[1.01] shadow-md shadow-cyan-500/40 z-20';
     } else if (isCoreq) {
-      ringStyle = 'ring-3 ring-red-500 border-dashed scale-[1.02] shadow-lg shadow-red-500/50 z-20';
+      ringStyle = 'ring-2 ring-red-500 border-dashed scale-[1.01] shadow-md shadow-red-500/40 z-20';
     } else if (isClinicalHighlight) {
-      ringStyle = 'ring-3 ring-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.7)] z-10 brightness-115';
+      ringStyle = 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-10 brightness-115';
     }
 
     let opacityStyle = 'opacity-100';
@@ -333,11 +382,11 @@ export default function App() {
           ${opacityStyle}
         `}
         style={{
-          boxShadow: isHovered ? '0 12px 28px rgba(0,0,0,0.85)' : '0 3px 6px rgba(0,0,0,0.45)'
+          boxShadow: isHovered ? '0 8px 20px rgba(0,0,0,0.7)' : '0 2px 4px rgba(0,0,0,0.4)'
         }}
       >
-        {/* ================= BARRA SUPERIOR (CÓDIGO + ESTRELLA + N° DE SERIE EN CÍRCULO BLANCO) ================= */}
-        <div className="bg-[#101114] px-2 py-1 flex items-center justify-between border-b border-black/40">
+        {/* ================= BARRA SUPERIOR (CÓDIGO + N° DE SERIE EN CÍRCULO BLANCO) ================= */}
+        <div className="bg-[#101114] px-2 py-0.5 flex items-center justify-between border-b border-black/40">
           <span className="font-mono text-[11px] font-black text-white tracking-tight">
             {course.codigo}
           </span>
@@ -386,7 +435,7 @@ export default function App() {
                   x2="100%"
                   y2="100%"
                   stroke="#ef4444"
-                  strokeWidth="4"
+                  strokeWidth="3.5"
                   strokeLinecap="round"
                 />
               </svg>
@@ -444,7 +493,7 @@ export default function App() {
                 Malla Interactiva Enfermería UNAB
               </h1>
               <p className="text-xs text-zinc-400 hidden sm:block">
-                Colores mates descansados, tarjetas amplias legibles y navegación fluida
+                Flechas delgadas precisas, colores mates descansados y respuesta fluida
               </p>
             </div>
           </div>
@@ -535,63 +584,61 @@ export default function App() {
           className="relative inline-block transition-transform duration-75 origin-top"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
-          {/* ================= CAPA DE FLECHAS SVG DINÁMICAS (AL PASAR EL CURSOR) ================= */}
+          {/* ================= CAPA DE FLECHAS SVG DELGADAS Y ESTABLES ================= */}
           <svg
             className="absolute inset-0 pointer-events-none z-30 w-full h-full"
-            style={{ minWidth: '100%', minHeight: '100%' }}
+            style={{ minWidth: '100%', minHeight: '100%', pointerEvents: 'none' }}
           >
             <defs>
+              {/* Puntas de flecha más finas, pequeñas y elegantes */}
               <marker
                 id="arrow-orange"
-                markerWidth="9"
-                markerHeight="9"
-                refX="7"
-                refY="4.5"
+                markerWidth="6"
+                markerHeight="6"
+                refX="5"
+                refY="3"
                 orient="auto"
               >
-                <polygon points="0 0, 9 4.5, 0 9" fill="#f97316" />
+                <path d="M 0 0 L 6 3 L 0 6 z" fill="#f97316" />
               </marker>
               <marker
                 id="arrow-cyan"
-                markerWidth="9"
-                markerHeight="9"
-                refX="7"
-                refY="4.5"
+                markerWidth="6"
+                markerHeight="6"
+                refX="5"
+                refY="3"
                 orient="auto"
               >
-                <polygon points="0 0, 9 4.5, 0 9" fill="#38bdf8" />
+                <path d="M 0 0 L 6 3 L 0 6 z" fill="#38bdf8" />
               </marker>
               <marker
                 id="arrow-red"
-                markerWidth="9"
-                markerHeight="9"
-                refX="7"
-                refY="4.5"
+                markerWidth="6"
+                markerHeight="6"
+                refX="5"
+                refY="3"
                 orient="auto"
               >
-                <polygon points="0 0, 9 4.5, 0 9" fill="#ef4444" />
+                <path d="M 0 0 L 6 3 L 0 6 z" fill="#ef4444" />
               </marker>
             </defs>
 
             {activeArrows.map(arrow => {
-              const dx = arrow.to.x - arrow.from.x;
-              const control1 = { x: arrow.from.x + dx * 0.45, y: arrow.from.y };
-              const control2 = { x: arrow.to.x - dx * 0.45, y: arrow.to.y };
-              const d = `M ${arrow.from.x} ${arrow.from.y} C ${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${arrow.to.x} ${arrow.to.y}`;
-
               let markerUrl = 'url(#arrow-cyan)';
               if (arrow.color === '#f97316') markerUrl = 'url(#arrow-orange)';
               if (arrow.color === '#ef4444') markerUrl = 'url(#arrow-red)';
 
               return (
-                <g key={arrow.id}>
-                  <path d={d} fill="none" stroke="#000000" strokeWidth="6" opacity="0.85" />
+                <g key={arrow.id} style={{ pointerEvents: 'none' }}>
+                  {/* Sombra sutil fina para contraste */}
+                  <path d={arrow.d} fill="none" stroke="#000000" strokeWidth="3.5" opacity="0.6" />
+                  {/* Línea delgada elegante */}
                   <path
-                    d={d}
+                    d={arrow.d}
                     fill="none"
                     stroke={arrow.color}
                     strokeWidth={arrow.strokeWidth}
-                    strokeDasharray={arrow.dashed ? '7,4' : 'none'}
+                    strokeDasharray={arrow.dashed ? '5,4' : 'none'}
                     markerEnd={markerUrl}
                   />
                 </g>
@@ -663,10 +710,10 @@ export default function App() {
         </div>
       </main>
 
-      {/* ================= TOOLTIP ESTABLE ANCLADO (COMO EN LA IMAGEN 2) ================= */}
-      {hoveredInfo && tooltipPos && (
+      {/* ================= TOOLTIP ESTABLE (SOLO APARECE TRAS 5 SEGUNDOS DE HOVER) ================= */}
+      {hoveredInfo && showTooltip && tooltipPos && (
         <div
-          className="fixed pointer-events-none z-50 bg-[#121316]/95 border border-zinc-600 rounded-lg p-3 shadow-2xl text-left text-xs max-w-sm backdrop-blur-md transition-all duration-75"
+          className="fixed pointer-events-none z-50 bg-[#121316]/95 border border-zinc-600 rounded-lg p-3 shadow-2xl text-left text-xs max-w-sm backdrop-blur-md animate-in fade-in duration-200"
           style={{
             left: `${tooltipPos.left}px`,
             top: `${tooltipPos.top}px`
