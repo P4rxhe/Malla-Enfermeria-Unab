@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import mallaData from './data/mallaEnfermeria.json';
 
-const STORAGE_KEY = 'malla_enfermeria_unab_aprobados_v6';
+const STORAGE_KEY = 'malla_enfermeria_unab_aprobados_v7';
 
 export default function App() {
   const [approved, setApproved] = useState(() => {
@@ -56,7 +56,7 @@ export default function App() {
     };
   }, []);
 
-  // Mapas de ramos por ID y por Número
+  // Mapas de ramos por ID y por Número correlativo
   const { courseMap, numberMap } = useMemo(() => {
     const byId = new Map();
     const byNum = new Map();
@@ -80,14 +80,14 @@ export default function App() {
   const porcentajeCreditos = Math.round((creditosAprobados / totalCreditos) * 100);
   const porcentajeRamos = Math.round((approved.length / totalRamos) * 100);
 
-  // Confeti al 100%
+  // Confeti al completar el 100%
   useEffect(() => {
     if (approved.length === totalRamos && totalRamos > 0) {
-      confetti({ particleCount: 160, spread: 100, origin: { y: 0.6 } });
+      confetti({ particleCount: 180, spread: 110, origin: { y: 0.6 } });
     }
   }, [approved.length, totalRamos]);
 
-  // Ramos que abre hacia el futuro
+  // Ramos que este curso abre hacia el futuro
   const directDependents = useMemo(() => {
     const deps = new Map();
     mallaData.ramos.forEach(r => {
@@ -142,10 +142,12 @@ export default function App() {
   const handleToggleCourse = (course) => {
     const isApp = approved.includes(course.id);
     if (isApp) {
+      // Si ya está aprobado, al desmarcarlo se desaprueban los que dependían de él
       const dependentIds = getAllDescendants(course.id);
       const toRemove = [course.id, ...dependentIds.filter(id => approved.includes(id))];
       setApproved(prev => prev.filter(id => !toRemove.includes(id)));
     } else {
+      // Si se aprueba, se aprueban automáticamente sus prerrequisitos faltantes
       const missingAncestors = getAllAncestors(course.id).filter(id => !approved.includes(id));
       const toAdd = [course.id, ...missingAncestors];
       if (course.correquisitos && course.correquisitos.length > 0) {
@@ -173,7 +175,7 @@ export default function App() {
     setShowFastApproveModal(false);
   };
 
-  // Datos del ramo hovered
+  // Datos del ramo sobre el cual está el cursor
   const hoveredInfo = useMemo(() => {
     if (!hoveredCourseId) return null;
     const current = courseMap.get(hoveredCourseId);
@@ -186,12 +188,12 @@ export default function App() {
     return { course: current, prereqs, coreqs, unlocks };
   }, [hoveredCourseId, courseMap, directDependents]);
 
-  // Manejador de entrada del cursor con temporizador EXACTO de 5 segundos
+  // Manejador de entrada con temporizador EXACTO de 5 segundos (5000 ms)
   const handleMouseEnterCard = (course, event) => {
     currentHoveredIdRef.current = course.id;
     setHoveredCourseId(course.id);
 
-    // Cancelar cualquier temporizador anterior
+    // Cancelar cualquier temporizador previo
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
@@ -200,13 +202,12 @@ export default function App() {
 
     const rect = event.currentTarget.getBoundingClientRect();
     const pos = {
-      top: rect.bottom + 8,
-      left: Math.max(16, Math.min(window.innerWidth - 320, rect.left - 20))
+      top: Math.min(window.innerHeight - 250, rect.bottom + 8),
+      left: Math.max(16, Math.min(window.innerWidth - 340, rect.left - 20))
     };
 
-    // Temporizador de 5 segundos (5000 ms, ni más ni menos)
+    // Temporizador EXACTO de 5 segundos (5000 ms)
     hoverTimerRef.current = setTimeout(() => {
-      // Verificar que el cursor siga sobre este mismo ramo después de los 5 segundos
       if (currentHoveredIdRef.current === course.id) {
         setTooltipData({ course, pos });
       }
@@ -225,7 +226,7 @@ export default function App() {
     }
   };
 
-  // Flechas directas, delgadas y limpias (como en malla-fic)
+  // CÁLCULO PRECISO DE FLECHAS SVG (100% INMUNE AL ZOOM Y AL ESCALADO)
   const activeArrows = useMemo(() => {
     if (!hoveredInfo || !containerRef.current) return [];
     const { course, prereqs, coreqs, unlocks } = hoveredInfo;
@@ -233,73 +234,98 @@ export default function App() {
     if (!activeEl) return [];
 
     const containerRect = containerRef.current.getBoundingClientRect();
-    const aRect = activeEl.getBoundingClientRect();
+    const scale = zoomLevel / 100;
 
+    const aRect = activeEl.getBoundingClientRect();
     const activeBox = {
-      left: aRect.left - containerRect.left,
-      right: aRect.right - containerRect.left,
-      top: aRect.top - containerRect.top,
-      bottom: aRect.bottom - containerRect.top,
-      centerX: aRect.left - containerRect.left + aRect.width / 2,
-      centerY: aRect.top - containerRect.top + aRect.height / 2
+      left: (aRect.left - containerRect.left) / scale,
+      right: (aRect.right - containerRect.left) / scale,
+      top: (aRect.top - containerRect.top) / scale,
+      bottom: (aRect.bottom - containerRect.top) / scale,
+      centerX: (aRect.left - containerRect.left + aRect.width / 2) / scale,
+      centerY: (aRect.top - containerRect.top + aRect.height / 2) / scale
     };
 
     const arrows = [];
 
-    // 1. Flechas NARANJAS (Prerrequisitos previos directos apuntan hacia el ramo)
+    // 1. FLECHAS NARANJAS: PRERREQUISITOS PREVIOS (apuntan HACIA el ramo activo)
     prereqs.forEach(prereqId => {
       const el = cardElementsRef.current.get(prereqId);
       if (el) {
         const r = el.getBoundingClientRect();
-        const fromX = r.right - containerRect.left;
-        const fromY = r.top - containerRect.top + r.height / 2;
+        const fromX = (r.right - containerRect.left) / scale;
+        const fromY = (r.top - containerRect.top + r.height / 2) / scale;
         const toX = activeBox.left;
         const toY = activeBox.centerY;
 
-        // Trazo directo limpio con flecha
+        const dx = toX - fromX;
+        let d = '';
+        if (dx > 15) {
+          const cpOffset = Math.min(Math.max(dx * 0.45, 25), 100);
+          d = `M ${fromX} ${fromY} C ${fromX + cpOffset} ${fromY}, ${toX - cpOffset} ${toY}, ${toX} ${toY}`;
+        } else {
+          const midX = (fromX + toX) / 2;
+          const midY = (fromY + toY) / 2;
+          d = `M ${fromX} ${fromY} Q ${midX - 35} ${midY}, ${toX} ${toY}`;
+        }
+
         arrows.push({
           id: `pre-${prereqId}-${course.id}`,
-          d: `M ${fromX} ${fromY} L ${toX} ${toY}`,
+          d,
           color: '#f97316',
           dashed: false,
-          strokeWidth: 2
+          strokeWidth: 2.2
         });
       }
     });
 
-    // 2. Flechas CELESTES (Ramos que abre hacia el futuro)
+    // 2. FLECHAS CELESTES: RAMOS QUE ABRE HACIA EL FUTURO (apuntan DESDE el ramo activo HACIA los que desbloquea)
     unlocks.forEach(unlockId => {
       const el = cardElementsRef.current.get(unlockId);
       if (el) {
         const r = el.getBoundingClientRect();
         const fromX = activeBox.right;
         const fromY = activeBox.centerY;
-        const toX = r.left - containerRect.left;
-        const toY = r.top - containerRect.top + r.height / 2;
+        const toX = (r.left - containerRect.left) / scale;
+        const toY = (r.top - containerRect.top + r.height / 2) / scale;
+
+        const dx = toX - fromX;
+        let d = '';
+        if (dx > 15) {
+          const cpOffset = Math.min(Math.max(dx * 0.45, 25), 100);
+          d = `M ${fromX} ${fromY} C ${fromX + cpOffset} ${fromY}, ${toX - cpOffset} ${toY}, ${toX} ${toY}`;
+        } else {
+          const midX = (fromX + toX) / 2;
+          const midY = (fromY + toY) / 2;
+          d = `M ${fromX} ${fromY} Q ${midX + 35} ${midY}, ${toX} ${toY}`;
+        }
 
         arrows.push({
           id: `unl-${course.id}-${unlockId}`,
-          d: `M ${fromX} ${fromY} L ${toX} ${toY}`,
+          d,
           color: '#38bdf8',
           dashed: true,
-          strokeWidth: 2
+          strokeWidth: 2.2
         });
       }
     });
 
-    // 3. Flechas ROJAS (Co-requisitos ligados)
+    // 3. FLECHAS ROJAS: CORREQUISITOS (ramos simultáneos)
     coreqs.forEach(coId => {
       const el = cardElementsRef.current.get(coId);
       if (el) {
         const r = el.getBoundingClientRect();
         const fromX = activeBox.centerX;
         const fromY = activeBox.bottom;
-        const toX = r.left - containerRect.left + r.width / 2;
-        const toY = r.top - containerRect.top;
+        const toX = (r.left - containerRect.left + r.width / 2) / scale;
+        const toY = (r.top - containerRect.top) / scale;
+
+        const midY = (fromY + toY) / 2;
+        const d = `M ${fromX} ${fromY} Q ${(fromX + toX) / 2 + 25} ${midY}, ${toX} ${toY}`;
 
         arrows.push({
           id: `co-${course.id}-${coId}`,
-          d: `M ${fromX} ${fromY} L ${toX} ${toY}`,
+          d,
           color: '#ef4444',
           dashed: true,
           strokeWidth: 2
@@ -308,7 +334,7 @@ export default function App() {
     });
 
     return arrows;
-  }, [hoveredInfo]);
+  }, [hoveredInfo, zoomLevel]);
 
   // Estructura de semestres (1 a 10)
   const semestersData = useMemo(() => {
@@ -333,7 +359,7 @@ export default function App() {
     return semArray;
   }, []);
 
-  // Componente de Tarjeta
+  // COMPONENTE DE TARJETA DE RAMO
   const CourseCard = ({ course }) => {
     const isApp = approved.includes(course.id);
     const unlocked = isUnlocked(course);
@@ -345,38 +371,54 @@ export default function App() {
     const isClinicalHighlight = highlightClinics && course.campoClinico;
     const isDimmedByClinical = highlightClinics && !course.campoClinico;
 
-    // Regla de color: VERDE si está habilitado para cursar, ROJO si no está habilitado (bloqueado)
+    // Búsqueda
+    const matchesSearch = search.trim() === '' ||
+      course.nombre.toLowerCase().includes(search.toLowerCase()) ||
+      course.codigo.toLowerCase().includes(search.toLowerCase()) ||
+      String(course.numero) === search.trim();
+
+    // ESTADO DE DISPONIBILIDAD (VERDE = HABILITADO / APTO, ROJO = BLOQUEADO / AÚN NO SE ABRE)
     let stateBorder = 'border-zinc-800';
+    let opacityStyle = 'opacity-100';
+
     if (!isApp) {
       if (unlocked) {
-        // Habilitado -> Borde verde
-        stateBorder = 'border-emerald-500/90 shadow-[0_0_8px_rgba(34,197,94,0.3)]';
+        // HABILITADO / APTO: Borde verde vibrante, 100% visible
+        stateBorder = 'border-2 border-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.35)]';
+        opacityStyle = 'opacity-100';
       } else {
-        // No habilitado (bloqueado) -> Borde rojo
-        stateBorder = 'border-red-500/70 shadow-[0_0_6px_rgba(239,68,68,0.2)]';
+        // BLOQUEADO / AÚN NO SE ABRE: Muy opaco/apagado (opacity-35) y borde rojo
+        stateBorder = 'border border-red-500/60 shadow-[0_0_4px_rgba(239,68,68,0.2)]';
+        opacityStyle = 'opacity-35 hover:opacity-75';
       }
+    } else {
+      // APROBADO: Borde sutil y buena visibilidad con franja roja diagonal
+      stateBorder = 'border border-zinc-700/80';
+      opacityStyle = 'opacity-85 hover:opacity-100';
     }
 
-    // Resaltado de hover
+    // RESALTADOS DINÁMICOS AL PONER EL CURSOR SOBRE UN RAMO
     let hoverRing = '';
     if (isHovered) {
-      hoverRing = 'ring-2 ring-white scale-[1.02] shadow-2xl z-30 brightness-110';
+      hoverRing = 'ring-2 ring-white scale-[1.03] shadow-2xl z-30 brightness-110 opacity-100';
     } else if (isPrereq) {
-      hoverRing = 'ring-2 ring-orange-500 scale-[1.01] shadow-lg shadow-orange-500/50 z-20';
+      // Prerrequisito que este ramo necesita: Iluminado en NARANJA
+      hoverRing = 'ring-2 ring-orange-500 scale-[1.02] shadow-[0_0_15px_rgba(249,115,22,0.7)] z-20 brightness-110 opacity-100';
     } else if (isUnlockTarget) {
-      hoverRing = 'ring-2 ring-cyan-400 scale-[1.01] shadow-lg shadow-cyan-500/50 z-20';
+      // Ramo futuro que este ramo abre: Iluminado en CELESTE / CYAN
+      hoverRing = 'ring-2 ring-cyan-400 scale-[1.02] shadow-[0_0_15px_rgba(56,189,248,0.7)] z-20 brightness-110 opacity-100';
     } else if (isCoreq) {
-      hoverRing = 'ring-2 ring-red-500 border-dashed scale-[1.01] shadow-lg shadow-red-500/50 z-20';
+      hoverRing = 'ring-2 ring-red-500 scale-[1.02] shadow-[0_0_15px_rgba(239,68,68,0.7)] z-20 opacity-100';
     } else if (isClinicalHighlight) {
-      hoverRing = 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.6)] z-10 brightness-115';
+      hoverRing = 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.7)] z-10 brightness-115 opacity-100';
     }
 
-    let opacityStyle = 'opacity-100';
-    if (!unlocked && !isApp) {
-      opacityStyle = 'opacity-65 hover:opacity-90';
-    }
     if (isDimmedByClinical) {
-      opacityStyle = 'opacity-20 pointer-events-none';
+      opacityStyle = 'opacity-15 pointer-events-none';
+    }
+
+    if (!matchesSearch) {
+      opacityStyle = 'opacity-15 pointer-events-none';
     }
 
     return (
@@ -389,59 +431,62 @@ export default function App() {
         onMouseEnter={(e) => handleMouseEnterCard(course, e)}
         onMouseLeave={() => handleMouseLeaveCard(course)}
         className={`
-          relative w-[140px] h-[90px] flex-shrink-0 rounded flex flex-col justify-between cursor-pointer transition-transform duration-75 select-none overflow-hidden border
+          relative w-[145px] h-[92px] flex-shrink-0 rounded-md flex flex-col justify-between cursor-pointer transition-all duration-75 select-none overflow-hidden
           ${stateBorder}
           ${hoverRing}
           ${opacityStyle}
         `}
         style={{
-          boxShadow: isHovered ? '0 8px 20px rgba(0,0,0,0.7)' : '0 2px 4px rgba(0,0,0,0.4)'
+          boxShadow: isHovered ? '0 10px 25px rgba(0,0,0,0.8)' : '0 2px 5px rgba(0,0,0,0.5)'
         }}
       >
-        {/* ================= BARRA SUPERIOR (CÓDIGO + ESTRELLA + N° SERIE EN CÍRCULO BLANCO) ================= */}
-        <div className="bg-[#101114] px-1.5 py-0.5 flex items-center justify-between border-b border-black/40">
-          <div className="flex items-center gap-1">
-            <span className="font-mono text-[10.5px] font-black text-white tracking-tight">
-              {course.codigo}
-            </span>
-            {/* Indicador de estado: punto verde si habilitado, punto rojo si bloqueado */}
+        {/* ================= BARRA SUPERIOR DE LA TARJETA ================= */}
+        <div className="bg-[#121316] px-1.5 py-0.5 flex items-center justify-between border-b border-black/40">
+          <div className="flex items-center gap-1 min-w-0">
+            {/* Punto indicador de estado: Verde = Habilitado, Rojo = Bloqueado */}
             {!isApp && (
               <span
-                className={`w-1.5 h-1.5 rounded-full ${unlocked ? 'bg-emerald-400' : 'bg-red-500'}`}
+                className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  unlocked
+                    ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]'
+                    : 'bg-red-500/80'
+                }`}
                 title={unlocked ? 'Habilitado para cursar' : 'Bloqueado por prerrequisitos'}
+              />
+            )}
+            <span className="font-mono text-[9.5px] font-bold text-zinc-300 truncate tracking-tight">
+              {course.codigo}
+            </span>
+            {course.campoClinico && (
+              <Star
+                className="w-3 h-3 text-amber-400 fill-amber-400 flex-shrink-0"
+                title="Campo Clínico Obligatorio"
+              />
+            )}
+            {course.correquisitos && course.correquisitos.length > 0 && (
+              <LinkIcon
+                className="w-2.5 h-2.5 text-rose-400 flex-shrink-0"
+                title={`Co-requisito con: ${course.correquisitos.join(', ')}`}
               />
             )}
           </div>
 
-          <div className="flex items-center gap-1">
-            {course.campoClinico && (
-              <span title="Campo Clínico Obligatorio" className="text-amber-400 flex items-center">
-                <Star className="w-3 h-3 fill-amber-400" />
-              </span>
-            )}
-
-            {course.correquisitos && course.correquisitos.length > 0 && (
-              <span title={`Co-requisito ligado con: ${course.correquisitos.join(', ')}`} className="text-rose-400 flex items-center">
-                <LinkIcon className="w-3 h-3" />
-              </span>
-            )}
-
-            <span
-              className="w-4 h-4 min-w-[16px] rounded-full bg-white text-black font-black text-[9.5px] flex items-center justify-center shadow-sm"
-              title={`Número de ramo: ${course.numero}`}
-            >
-              {course.numero}
-            </span>
-          </div>
+          {/* Número correlativo del ramo (1 al 45) en círculo blanco */}
+          <span
+            className="w-4 h-4 rounded-full bg-white text-black font-black text-[9px] flex items-center justify-center flex-shrink-0 shadow-sm"
+            title={`Ramo correlativo N° ${course.numero}`}
+          >
+            {course.numero}
+          </span>
         </div>
 
-        {/* ================= CUERPO CENTRAL (COLOR PROPIO + NOMBRE) ================= */}
+        {/* ================= CUERPO CENTRAL DE LA TARJETA (COLOR VIVO) ================= */}
         <div
-          className="flex-1 px-1.5 py-1 flex items-center justify-center relative overflow-hidden"
+          className="flex-1 flex items-center justify-center p-1.5 relative overflow-hidden"
           style={{ backgroundColor: course.color }}
         >
           <div
-            className="text-[11.5px] font-bold text-center leading-[1.15] line-clamp-3 z-10 drop-shadow-sm"
+            className="text-[11.5px] font-bold text-center leading-[1.18] line-clamp-3 z-10 drop-shadow-sm px-0.5"
             style={{ color: course.textColor || '#ffffff' }}
           >
             {course.nombre}
@@ -464,12 +509,15 @@ export default function App() {
             </div>
           )}
 
-          {isApp && <div className="absolute inset-0 bg-black/45 z-10" />}
+          {isApp && <div className="absolute inset-0 bg-black/40 z-10" />}
         </div>
 
-        {/* ================= BARRA INFERIOR (CÍRCULOS: VERDE SI APROBADO, ROJO SI NO) ================= */}
-        <div className="bg-[#101114] px-1.5 py-0.5 flex items-center justify-between border-t border-black/40">
-          <div className="flex items-center gap-1 min-w-0" title={`Depende de los ramos N°: ${course.prerrequisitosNumeros.join(', ') || 'Ninguno'}`}>
+        {/* ================= BARRA INFERIOR (DEPENDENCIAS Y CRÉDITOS) ================= */}
+        <div className="bg-[#121316] px-1.5 py-0.5 flex items-center justify-between border-t border-black/40">
+          <div
+            className="flex items-center gap-1 min-w-0"
+            title={`Depende de los ramos N°: ${course.prerrequisitosNumeros.join(', ') || 'Ninguno (Inicial)'}`}
+          >
             {course.prerrequisitosNumeros.length === 0 ? (
               <span className="w-1.5 h-1.5 rounded-full bg-zinc-700/60" />
             ) : (
@@ -501,7 +549,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans select-none pb-40">
+    <div className="min-h-screen bg-[#070709] text-white flex flex-col font-sans select-none pb-36">
 
       {/* ================= BARRA SUPERIOR ================= */}
       <header className="sticky top-0 z-40 bg-[#0c0d10]/95 backdrop-blur-md border-b border-zinc-800 px-5 py-3 shadow-xl">
@@ -548,18 +596,22 @@ export default function App() {
               )}
             </div>
 
-            {/* Control de Zoom (+ / -) */}
+            {/* Control de Zoom (+ / - / Reset) */}
             <div className="flex items-center bg-zinc-900 border border-zinc-700 rounded-lg px-1.5 py-1 text-xs text-zinc-300">
               <button
-                onClick={() => setZoomLevel(prev => Math.max(70, prev - 5))}
+                onClick={() => setZoomLevel(prev => Math.max(60, prev - 5))}
                 className="p-1 hover:text-white transition"
                 title="Alejar vista (Zoom -)"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
-              <span className="px-2 font-mono text-xs font-bold text-zinc-200">
+              <button
+                onClick={() => setZoomLevel(90)}
+                className="px-2 font-mono text-xs font-bold text-zinc-200 hover:text-blue-400"
+                title="Restablecer zoom al 90%"
+              >
                 {zoomLevel}%
-              </span>
+              </button>
               <button
                 onClick={() => setZoomLevel(prev => Math.min(125, prev + 5))}
                 className="p-1 hover:text-white transition"
@@ -605,11 +657,11 @@ export default function App() {
       </header>
 
       {/* ================= CONTENEDOR PRINCIPAL TOTALMENTE ADAPTABLE SIN COLAPSO ================= */}
-      <main className="flex-1 overflow-x-auto overflow-y-visible px-4 py-6 w-full">
-        {/* Contenedor con w-max garantizado para que NUNCA se sobrepongan las columnas al encoger la pantalla */}
+      <main className="flex-1 overflow-x-auto overflow-y-visible px-6 py-6 w-full">
+        {/* Contenedor con origin-top-left FIJO para que las coordenadas coincidan al 100% */}
         <div
           ref={containerRef}
-          className="relative inline-block mx-auto min-w-max transition-transform duration-75 origin-top-left xl:origin-top"
+          className="relative inline-block mx-auto min-w-max transition-transform duration-75 origin-top-left"
           style={{ transform: `scale(${zoomLevel / 100})` }}
         >
           {/* ================= CAPA DE FLECHAS SVG DIRECTAS Y PRECISAS ================= */}
@@ -618,6 +670,7 @@ export default function App() {
             style={{ minWidth: '100%', minHeight: '100%', pointerEvents: 'none' }}
           >
             <defs>
+              {/* Flecha Naranja (Prerrequisitos previos directos) */}
               <marker
                 id="arrow-orange"
                 markerWidth="6"
@@ -626,8 +679,10 @@ export default function App() {
                 refY="3"
                 orient="auto"
               >
-                <path d="M 0 0 L 6 3 L 0 6 z" fill="#f97316" />
+                <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#f97316" />
               </marker>
+
+              {/* Flecha Celeste (Ramos que desbloquea a futuro) */}
               <marker
                 id="arrow-cyan"
                 markerWidth="6"
@@ -636,8 +691,10 @@ export default function App() {
                 refY="3"
                 orient="auto"
               >
-                <path d="M 0 0 L 6 3 L 0 6 z" fill="#38bdf8" />
+                <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#38bdf8" />
               </marker>
+
+              {/* Flecha Roja (Co-requisitos vinculados) */}
               <marker
                 id="arrow-red"
                 markerWidth="6"
@@ -646,7 +703,7 @@ export default function App() {
                 refY="3"
                 orient="auto"
               >
-                <path d="M 0 0 L 6 3 L 0 6 z" fill="#ef4444" />
+                <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#ef4444" />
               </marker>
             </defs>
 
@@ -657,7 +714,8 @@ export default function App() {
 
               return (
                 <g key={arrow.id} style={{ pointerEvents: 'none' }}>
-                  <path d={arrow.d} fill="none" stroke="#000000" strokeWidth="3" opacity="0.6" />
+                  {/* Sombra de contraste para que la flecha destaque siempre */}
+                  <path d={arrow.d} fill="none" stroke="#000000" strokeWidth="4" opacity="0.6" />
                   <path
                     d={arrow.d}
                     fill="none"
@@ -671,41 +729,41 @@ export default function App() {
             })}
           </svg>
 
-          {/* Cabecera de Años */}
-          <div className="flex gap-2.5 mb-2 text-center">
-            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+          {/* Cabecera de Años: Ancho 308px (2 columnas de 145px + 1 gap de 18px = 308px) */}
+          <div className="flex gap-[18px] mb-2 text-center">
+            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 1
             </div>
-            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 2
             </div>
-            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 3
             </div>
-            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 4
             </div>
-            <div className="w-[290px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
+            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
               Año 5
             </div>
           </div>
 
-          {/* Cabecera de Semestres (I a X) */}
-          <div className="flex gap-2.5 mb-3.5 text-center">
+          {/* Cabecera de Semestres (I a X): Con separación multiplicada por 1.5x (18px) */}
+          <div className="flex gap-[18px] mb-3.5 text-center">
             {semestersData.map(sem => (
               <div
                 key={sem.num}
-                className="w-[140px] flex-shrink-0 bg-[#121316] border border-zinc-800 py-1 rounded text-xs font-mono font-bold text-zinc-300"
+                className="w-[145px] flex-shrink-0 bg-[#121316] border border-zinc-800 py-1 rounded text-xs font-mono font-bold text-zinc-300"
               >
                 {sem.roman}
               </div>
             ))}
           </div>
 
-          {/* PARTE SUPERIOR: RAMOS TRONCALES */}
-          <div className="flex gap-2.5 items-start">
+          {/* PARTE SUPERIOR: RAMOS TRONCALES (Separación horizontal 18px, vertical 15px) */}
+          <div className="flex gap-[18px] items-start">
             {semestersData.map(sem => (
-              <div key={sem.num} className="w-[140px] flex-shrink-0 flex flex-col gap-2.5 min-h-[460px]">
+              <div key={sem.num} className="w-[145px] flex-shrink-0 flex flex-col gap-[15px] min-h-[480px]">
                 {sem.troncales.map(course => (
                   <CourseCard key={course.id} course={course} />
                 ))}
@@ -714,7 +772,7 @@ export default function App() {
           </div>
 
           {/* SEPARADOR VISUAL DE CURSOS TRANSVERSALES */}
-          <div className="my-6 flex items-center gap-3 w-full">
+          <div className="my-7 flex items-center gap-3 w-full">
             <div className="h-px bg-zinc-800 flex-1" />
             <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 whitespace-nowrap">
               Cursos Transversales & Idiomas
@@ -723,9 +781,9 @@ export default function App() {
           </div>
 
           {/* PARTE INFERIOR: RAMOS TRANSVERSALES E INGLÉS */}
-          <div className="flex gap-2.5 items-start">
+          <div className="flex gap-[18px] items-start">
             {semestersData.map(sem => (
-              <div key={sem.num} className="w-[140px] flex-shrink-0 flex flex-col gap-2.5">
+              <div key={sem.num} className="w-[145px] flex-shrink-0 flex flex-col gap-[15px]">
                 {sem.transversales.map(course => (
                   <CourseCard key={course.id} course={course} />
                 ))}
@@ -758,81 +816,79 @@ export default function App() {
               <span className="text-orange-400 font-bold">Prerrequisitos: </span>
               {tooltipData.course.prerrequisitos.length === 0
                 ? 'Ninguno (Inicial)'
-                : tooltipData.course.prerrequisitos.join(', ')}
+                : tooltipData.course.prerrequisitos.map(id => {
+                    const c = courseMap.get(id);
+                    return c ? `${c.nombre} (N° ${c.numero})` : id;
+                  }).join(', ')}
             </div>
             {tooltipData.course.correquisitos && tooltipData.course.correquisitos.length > 0 && (
               <div>
-                <span className="text-rose-400 font-bold">Ligado con: </span>
-                {tooltipData.course.correquisitos.join(', ')}
+                <span className="text-rose-400 font-bold">Co-requisitos: </span>
+                {tooltipData.course.correquisitos.map(id => {
+                  const c = courseMap.get(id);
+                  return c ? `${c.nombre} (N° ${c.numero})` : id;
+                }).join(', ')}
               </div>
             )}
             <div>
-              <span className="text-cyan-400 font-bold">Abre a futuro: </span>
-              {Array.from(directDependents.get(tooltipData.course.id) || []).length === 0
-                ? 'Ninguno posterior'
-                : Array.from(directDependents.get(tooltipData.course.id) || []).join(', ')}
+              <span className="text-cyan-400 font-bold">Habilita a futuro: </span>
+              {directDependents.get(tooltipData.course.id)?.length > 0
+                ? directDependents.get(tooltipData.course.id).map(id => {
+                    const c = courseMap.get(id);
+                    return c ? `${c.nombre} (N° ${c.numero})` : id;
+                  }).join(', ')
+                : 'Ninguno (Terminal)'}
             </div>
           </div>
         </div>
       )}
 
-      {/* ================= BARRA INFERIOR DE ESTADÍSTICAS ================= */}
-      <footer className="fixed bottom-0 left-0 right-0 z-30 bg-[#0a0b0e]/98 backdrop-blur-md border-t border-zinc-800 p-3.5 shadow-2xl">
-        <div className="max-w-[1920px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3 px-3">
+      {/* ================= BARRA INFERIOR FIJA ================= */}
+      <footer className="fixed bottom-0 left-0 right-0 z-40 bg-[#0c0d10]/95 backdrop-blur-md border-t border-zinc-800 px-5 py-2.5">
+        <div className="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
 
-          {/* Leyenda de Colores */}
-          <div className="flex items-center gap-2.5 overflow-x-auto text-[11px] text-zinc-300 max-w-full">
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#121316] border border-zinc-800 text-emerald-400 font-semibold">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Habilitado
+          {/* Leyenda rápida */}
+          <div className="flex items-center flex-wrap gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              <span className="text-zinc-300 font-medium">Habilitado</span>
             </div>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#121316] border border-zinc-800 text-red-400 font-semibold">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Bloqueado
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
+              <span className="text-zinc-400">Bloqueado</span>
             </div>
-            {mallaData.categorias.map(cat => (
-              <div
-                key={cat.id}
-                className="flex items-center gap-1.5 px-2 py-1 rounded bg-[#121316] border border-zinc-800 whitespace-nowrap"
-                title={cat.descripcion}
-              >
-                <span
-                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: cat.colorHex }}
-                />
-                <span className="text-zinc-300">{cat.nombre}</span>
-              </div>
-            ))}
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_6px_#f97316]" />
+              <span className="text-zinc-400">Prerrequisito (Naranja)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_6px_#38bdf8]" />
+              <span className="text-zinc-400">Desbloquea (Celeste)</span>
+            </div>
           </div>
 
-          {/* Estadísticas de Avance */}
-          <div className="flex items-center gap-6 justify-between w-full md:w-auto">
-            {/* Barra de Progreso */}
-            <div className="flex flex-col gap-1 w-44 md:w-56">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-zinc-300">
-                  Créditos: <span className="text-pink-400">{creditosAprobados}</span>/{totalCreditos}
-                </span>
-                <span className="text-pink-400 font-black">{porcentajeCreditos}%</span>
-              </div>
-              <div className="w-full h-2.5 rounded-full bg-zinc-800 overflow-hidden border border-zinc-700/60">
-                <div
-                  className="h-full bg-gradient-to-r from-pink-500 via-blue-500 to-emerald-400 transition-all duration-300"
-                  style={{ width: `${porcentajeCreditos}%` }}
-                />
-              </div>
+          {/* Estadísticas de Avance y Botón Limpiar */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-400">Créditos:</span>
+              <span className="font-mono font-bold text-white">
+                {creditosAprobados}/{totalCreditos}
+              </span>
+              <span className="text-zinc-400 font-mono text-[11px]">
+                ({porcentajeCreditos}%)
+              </span>
             </div>
 
-            {/* Contador de Ramos */}
-            <div className="text-right whitespace-nowrap">
-              <div className="text-[11px] text-zinc-400">Total Ramos</div>
-              <div className="text-sm font-black text-white">
-                {approved.length} / {totalRamos} ({porcentajeRamos}%)
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-400">Ramos:</span>
+              <span className="font-mono font-bold text-white">
+                {approved.length}/{totalRamos} ({porcentajeRamos}%)
+              </span>
             </div>
 
-            {/* Botón Limpiar */}
             <button
               onClick={handleClear}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 transition whitespace-nowrap"
+              className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-900 hover:bg-red-950/60 hover:text-red-300 border border-zinc-700 text-zinc-400 transition"
               title="Reiniciar todos los ramos aprobados"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -853,32 +909,56 @@ export default function App() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+            <h3 className="text-base font-bold text-white mb-3 flex items-center gap-2">
               <HelpCircle className="w-5 h-5 text-pink-400" />
-              Simbología y Reglas de la Malla ENF UNAB
+              Simbología y Mecánicas de la Malla
             </h3>
 
-            <div className="space-y-3 text-xs mt-3">
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
-                <span className="w-4 h-4 rounded-full bg-emerald-500 text-black font-black text-[9px] flex items-center justify-center">
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 rounded-xl bg-zinc-950 border border-emerald-500/50 flex gap-3 items-start">
+                <span className="w-4 h-4 rounded-full bg-emerald-400 text-black font-black text-[9px] flex items-center justify-center shadow-[0_0_8px_#34d399]">
                   ✓
                 </span>
                 <div>
-                  <h4 className="font-bold text-emerald-400">Borde Verde / Círculo Verde</h4>
+                  <h4 className="font-bold text-emerald-300">Borde Verde / Círculo Verde (Habilitado)</h4>
                   <p className="text-zinc-400 text-[11px] mt-0.5">
-                    Ramo o prerrequisito <strong>habilitado y aprobado</strong>.
+                    El ramo está <strong>listo para ser cursado</strong> porque ya tienes aprobados todos sus prerrequisitos.
                   </p>
                 </div>
               </div>
 
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex gap-3 items-start">
+              <div className="p-3 rounded-xl bg-zinc-950 border border-red-500/50 flex gap-3 items-start">
                 <span className="w-4 h-4 rounded-full bg-red-500 text-white font-black text-[9px] flex items-center justify-center">
                   ✕
                 </span>
                 <div>
-                  <h4 className="font-bold text-red-400">Borde Rojo / Círculo Rojo</h4>
+                  <h4 className="font-bold text-red-400">Borde Rojo / Opaco (Bloqueado)</h4>
                   <p className="text-zinc-400 text-[11px] mt-0.5">
-                    Ramo o prerrequisito <strong>bloqueado o pendiente</strong> por aprobar.
+                    El ramo está <strong>bloqueado</strong> y aparece opaco porque te faltan prerrequisitos por aprobar.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-orange-500/50 flex gap-3 items-start">
+                <span className="w-4 h-4 rounded-full bg-orange-500 text-black font-black text-[9px] flex items-center justify-center">
+                  ←
+                </span>
+                <div>
+                  <h4 className="font-bold text-orange-400">Flecha Naranja y Resaltado Naranja</h4>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">
+                    Señala los <strong>prerrequisitos previos directos</strong> que este ramo necesita para poder abrirse.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-cyan-500/50 flex gap-3 items-start">
+                <span className="w-4 h-4 rounded-full bg-cyan-400 text-black font-black text-[9px] flex items-center justify-center">
+                  →
+                </span>
+                <div>
+                  <h4 className="font-bold text-cyan-300">Flecha Celeste y Resaltado Celeste</h4>
+                  <p className="text-zinc-400 text-[11px] mt-0.5">
+                    Señala los <strong>ramos futuros</strong> que este ramo habilitará una vez que lo apruebes.
                   </p>
                 </div>
               </div>
@@ -900,7 +980,7 @@ export default function App() {
                 <div>
                   <h4 className="font-bold text-rose-400">Franja roja diagonal (Aprobado)</h4>
                   <p className="text-zinc-400 text-[11px] mt-0.5">
-                    Al hacer clic en un ramo, se tacha con una franja roja diagonal que marca que está aprobado.
+                    Al hacer clic en un ramo, se marca con una franja roja diagonal que indica que está aprobado.
                   </p>
                 </div>
               </div>
