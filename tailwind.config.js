@@ -13,7 +13,7 @@ export default {
           card: '#1e293b',
           blue: '#1d4ed8',
           teal: '#0d9488',
-          amber: '#d97706',
+          amber: '#e98513',
           purple: '#7c3aed',
           pink: '#db2777',
         }

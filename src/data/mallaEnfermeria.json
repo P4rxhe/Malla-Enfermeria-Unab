@@ -41,7 +41,7 @@
       "nombre": "Formación General y Transversal",
       "descripcion": "Habilidades comunicativas, razonamiento científico, pensamiento crítico y responsabilidad social.",
       "colorHex": "#f59e0b",
-      "bgCard": "#d97706",
+      "bgCard": "#f59e0b",
       "text": "text-slate-950 font-bold"
     },
     {
@@ -169,8 +169,12 @@
       "tipo": "troncal",
       "color": "#db2777",
       "textColor": "#ffffff",
-      "prerrequisitos": ["BIO-100"],
-      "prerrequisitosNumeros": [3],
+      "prerrequisitos": [
+        "BIO-100"
+      ],
+      "prerrequisitosNumeros": [
+        3
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -188,8 +192,12 @@
       "tipo": "troncal",
       "color": "#db2777",
       "textColor": "#ffffff",
-      "prerrequisitos": ["QUI-100"],
-      "prerrequisitosNumeros": [2],
+      "prerrequisitos": [
+        "QUI-100"
+      ],
+      "prerrequisitosNumeros": [
+        2
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -245,8 +253,12 @@
       "tipo": "troncal",
       "color": "#1d4ed8",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-101"],
-      "prerrequisitosNumeros": [5],
+      "prerrequisitos": [
+        "EFER-101"
+      ],
+      "prerrequisitosNumeros": [
+        5
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": true,
@@ -262,7 +274,7 @@
       "creditos": 4,
       "categoria": "transversal",
       "tipo": "transversal",
-      "color": "#d97706",
+      "color": "#f59e0b",
       "textColor": "#000000",
       "prerrequisitos": [],
       "prerrequisitosNumeros": [],
@@ -283,8 +295,14 @@
       "tipo": "troncal",
       "color": "#db2777",
       "textColor": "#ffffff",
-      "prerrequisitos": ["MOR-100", "BIOQ-200"],
-      "prerrequisitosNumeros": [1, 7],
+      "prerrequisitos": [
+        "MOR-100",
+        "BIOQ-200"
+      ],
+      "prerrequisitosNumeros": [
+        1,
+        7
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -302,8 +320,12 @@
       "tipo": "troncal",
       "color": "#0891b2",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-202"],
-      "prerrequisitosNumeros": [9],
+      "prerrequisitos": [
+        "EFER-202"
+      ],
+      "prerrequisitosNumeros": [
+        9
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -321,8 +343,14 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-202", "EFER-203"],
-      "prerrequisitosNumeros": [9, 10],
+      "prerrequisitos": [
+        "EFER-202",
+        "EFER-203"
+      ],
+      "prerrequisitosNumeros": [
+        9,
+        10
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -340,8 +368,14 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-201", "EFER-203"],
-      "prerrequisitosNumeros": [8, 10],
+      "prerrequisitos": [
+        "EFER-201",
+        "EFER-203"
+      ],
+      "prerrequisitosNumeros": [
+        8,
+        10
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -378,10 +412,18 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["FIS-300"],
-      "prerrequisitosNumeros": [12],
-      "correquisitos": ["EFER-402"],
-      "correquisitosNumeros": [21],
+      "prerrequisitos": [
+        "FIS-300"
+      ],
+      "prerrequisitosNumeros": [
+        12
+      ],
+      "correquisitos": [
+        "EFER-402"
+      ],
+      "correquisitosNumeros": [
+        21
+      ],
       "campoClinico": false,
       "descripcion": "Alteraciones funcionales y mecanismos fisiopatológicos de las enfermedades humanas."
     },
@@ -397,8 +439,12 @@
       "tipo": "troncal",
       "color": "#059669",
       "textColor": "#ffffff",
-      "prerrequisitos": ["FIS-300"],
-      "prerrequisitosNumeros": [12],
+      "prerrequisitos": [
+        "FIS-300"
+      ],
+      "prerrequisitosNumeros": [
+        12
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -416,8 +462,12 @@
       "tipo": "troncal",
       "color": "#0891b2",
       "textColor": "#ffffff",
-      "prerrequisitos": ["SPU-300"],
-      "prerrequisitosNumeros": [13],
+      "prerrequisitos": [
+        "SPU-300"
+      ],
+      "prerrequisitosNumeros": [
+        13
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -435,8 +485,12 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-301"],
-      "prerrequisitosNumeros": [14],
+      "prerrequisitos": [
+        "EFER-301"
+      ],
+      "prerrequisitosNumeros": [
+        14
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -454,10 +508,18 @@
       "tipo": "troncal",
       "color": "#1d4ed8",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-302"],
-      "prerrequisitosNumeros": [15],
-      "correquisitos": ["EFER-401"],
-      "correquisitosNumeros": [17],
+      "prerrequisitos": [
+        "EFER-302"
+      ],
+      "prerrequisitosNumeros": [
+        15
+      ],
+      "correquisitos": [
+        "EFER-401"
+      ],
+      "correquisitosNumeros": [
+        17
+      ],
       "campoClinico": true,
       "descripcion": "Valoración y cuidados al adulto y adulto mayor con patologías médicas y quirúrgicas."
     },
@@ -473,8 +535,12 @@
       "tipo": "idioma",
       "color": "#ea580c",
       "textColor": "#ffffff",
-      "prerrequisitos": ["ING-101"],
-      "prerrequisitosNumeros": [16],
+      "prerrequisitos": [
+        "ING-101"
+      ],
+      "prerrequisitosNumeros": [
+        16
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -492,8 +558,14 @@
       "tipo": "troncal",
       "color": "#059669",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-401", "FAR-400"],
-      "prerrequisitosNumeros": [17, 18],
+      "prerrequisitos": [
+        "EFER-401",
+        "FAR-400"
+      ],
+      "prerrequisitosNumeros": [
+        17,
+        18
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -511,10 +583,20 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-403"],
-      "prerrequisitosNumeros": [20],
-      "correquisitos": ["EFER-502", "EFER-504"],
-      "correquisitosNumeros": [25, 27],
+      "prerrequisitos": [
+        "EFER-403"
+      ],
+      "prerrequisitosNumeros": [
+        20
+      ],
+      "correquisitos": [
+        "EFER-502",
+        "EFER-504"
+      ],
+      "correquisitosNumeros": [
+        25,
+        27
+      ],
       "campoClinico": false,
       "descripcion": "Intervenciones de enfermería en centros de atención primaria y visitas domiciliarias."
     },
@@ -530,10 +612,20 @@
       "tipo": "troncal",
       "color": "#1d4ed8",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-402"],
-      "prerrequisitosNumeros": [21],
-      "correquisitos": ["EFER-501", "EFER-504"],
-      "correquisitosNumeros": [24, 27],
+      "prerrequisitos": [
+        "EFER-402"
+      ],
+      "prerrequisitosNumeros": [
+        21
+      ],
+      "correquisitos": [
+        "EFER-501",
+        "EFER-504"
+      ],
+      "correquisitosNumeros": [
+        24,
+        27
+      ],
       "campoClinico": true,
       "descripcion": "Atención pediátrica y del adulto en servicios hospitalarios y ambulatorios."
     },
@@ -549,8 +641,12 @@
       "tipo": "troncal",
       "color": "#0891b2",
       "textColor": "#ffffff",
-      "prerrequisitos": ["SPU-400"],
-      "prerrequisitosNumeros": [19],
+      "prerrequisitos": [
+        "SPU-400"
+      ],
+      "prerrequisitosNumeros": [
+        19
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -568,10 +664,22 @@
       "tipo": "troncal",
       "color": "#7c3aed",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-402", "EFER-403"],
-      "prerrequisitosNumeros": [20, 21],
-      "correquisitos": ["EFER-501", "EFER-502"],
-      "correquisitosNumeros": [24, 25],
+      "prerrequisitos": [
+        "EFER-402",
+        "EFER-403"
+      ],
+      "prerrequisitosNumeros": [
+        20,
+        21
+      ],
+      "correquisitos": [
+        "EFER-501",
+        "EFER-502"
+      ],
+      "correquisitosNumeros": [
+        24,
+        25
+      ],
       "campoClinico": false,
       "descripcion": "Integración práctica de competencias de cuidados familiares y hospitalarios."
     },
@@ -587,8 +695,12 @@
       "tipo": "idioma",
       "color": "#ea580c",
       "textColor": "#ffffff",
-      "prerrequisitos": ["ING-102"],
-      "prerrequisitosNumeros": [22],
+      "prerrequisitos": [
+        "ING-102"
+      ],
+      "prerrequisitosNumeros": [
+        22
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -606,8 +718,12 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-501"],
-      "prerrequisitosNumeros": [24],
+      "prerrequisitos": [
+        "EFER-501"
+      ],
+      "prerrequisitosNumeros": [
+        24
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -625,8 +741,18 @@
       "tipo": "troncal",
       "color": "#1d4ed8",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-401", "FAR-500", "EFER-502", "EFER-504"],
-      "prerrequisitosNumeros": [17, 23, 25, 27],
+      "prerrequisitos": [
+        "EFER-401",
+        "FAR-500",
+        "EFER-502",
+        "EFER-504"
+      ],
+      "prerrequisitosNumeros": [
+        17,
+        23,
+        25,
+        27
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": true,
@@ -644,8 +770,14 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["MAT-100", "SPU-400"],
-      "prerrequisitosNumeros": [4, 19],
+      "prerrequisitos": [
+        "MAT-100",
+        "SPU-400"
+      ],
+      "prerrequisitosNumeros": [
+        4,
+        19
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -663,8 +795,12 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-503"],
-      "prerrequisitosNumeros": [26],
+      "prerrequisitos": [
+        "EFER-503"
+      ],
+      "prerrequisitosNumeros": [
+        26
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -680,10 +816,14 @@
       "creditos": 4,
       "categoria": "transversal",
       "tipo": "transversal",
-      "color": "#d97706",
+      "color": "#f59e0b",
       "textColor": "#000000",
-      "prerrequisitos": ["CSG-100"],
-      "prerrequisitosNumeros": [11],
+      "prerrequisitos": [
+        "CSG-100"
+      ],
+      "prerrequisitosNumeros": [
+        11
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -701,8 +841,12 @@
       "tipo": "idioma",
       "color": "#ea580c",
       "textColor": "#ffffff",
-      "prerrequisitos": ["ING-103"],
-      "prerrequisitosNumeros": [28],
+      "prerrequisitos": [
+        "ING-103"
+      ],
+      "prerrequisitosNumeros": [
+        28
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -720,8 +864,12 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-601"],
-      "prerrequisitosNumeros": [29],
+      "prerrequisitos": [
+        "EFER-601"
+      ],
+      "prerrequisitosNumeros": [
+        29
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -739,8 +887,14 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-501", "EFER-601"],
-      "prerrequisitosNumeros": [24, 29],
+      "prerrequisitos": [
+        "EFER-501",
+        "EFER-601"
+      ],
+      "prerrequisitosNumeros": [
+        24,
+        29
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -758,8 +912,14 @@
       "tipo": "troncal",
       "color": "#1d4ed8",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-502", "EFER-602"],
-      "prerrequisitosNumeros": [25, 30],
+      "prerrequisitos": [
+        "EFER-502",
+        "EFER-602"
+      ],
+      "prerrequisitosNumeros": [
+        25,
+        30
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": true,
@@ -777,8 +937,12 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-604"],
-      "prerrequisitosNumeros": [32],
+      "prerrequisitos": [
+        "EFER-604"
+      ],
+      "prerrequisitosNumeros": [
+        32
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -794,10 +958,14 @@
       "creditos": 4,
       "categoria": "transversal",
       "tipo": "transversal",
-      "color": "#d97706",
+      "color": "#f59e0b",
       "textColor": "#000000",
-      "prerrequisitos": ["CSG-200"],
-      "prerrequisitosNumeros": [33],
+      "prerrequisitos": [
+        "CSG-200"
+      ],
+      "prerrequisitosNumeros": [
+        33
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -815,10 +983,24 @@
       "tipo": "troncal",
       "color": "#1d4ed8",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-602", "EFER-701", "EFER-702", "EFER-703"],
-      "prerrequisitosNumeros": [30, 35, 36, 37],
-      "correquisitos": ["EFER-803"],
-      "correquisitosNumeros": [42],
+      "prerrequisitos": [
+        "EFER-602",
+        "EFER-701",
+        "EFER-702",
+        "EFER-703"
+      ],
+      "prerrequisitosNumeros": [
+        30,
+        35,
+        36,
+        37
+      ],
+      "correquisitos": [
+        "EFER-803"
+      ],
+      "correquisitosNumeros": [
+        42
+      ],
       "campoClinico": true,
       "descripcion": "Cuidado integral de enfermería de alta complejidad en unidades críticas y quirúrgicas."
     },
@@ -834,8 +1016,14 @@
       "tipo": "troncal",
       "color": "#2563eb",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-603", "EFER-705"],
-      "prerrequisitosNumeros": [31, 38],
+      "prerrequisitos": [
+        "EFER-603",
+        "EFER-705"
+      ],
+      "prerrequisitosNumeros": [
+        31,
+        38
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -853,10 +1041,22 @@
       "tipo": "troncal",
       "color": "#7c3aed",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-504", "EFER-702", "EFER-703"],
-      "prerrequisitosNumeros": [27, 36, 37],
-      "correquisitos": ["EFER-801"],
-      "correquisitosNumeros": [40],
+      "prerrequisitos": [
+        "EFER-504",
+        "EFER-702",
+        "EFER-703"
+      ],
+      "prerrequisitosNumeros": [
+        27,
+        36,
+        37
+      ],
+      "correquisitos": [
+        "EFER-801"
+      ],
+      "correquisitosNumeros": [
+        40
+      ],
       "campoClinico": false,
       "descripcion": "Integración y consolidación de competencias previas al internado profesional."
     },
@@ -870,10 +1070,14 @@
       "creditos": 4,
       "categoria": "transversal",
       "tipo": "transversal",
-      "color": "#d97706",
+      "color": "#f59e0b",
       "textColor": "#000000",
-      "prerrequisitos": ["CSG-300"],
-      "prerrequisitosNumeros": [39],
+      "prerrequisitos": [
+        "CSG-300"
+      ],
+      "prerrequisitosNumeros": [
+        39
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": false,
@@ -891,8 +1095,18 @@
       "tipo": "troncal",
       "color": "#6d28d9",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-801", "EFER-802", "EFER-803", "EFER-604"],
-      "prerrequisitosNumeros": [40, 41, 42, 32],
+      "prerrequisitos": [
+        "EFER-801",
+        "EFER-802",
+        "EFER-803",
+        "EFER-604"
+      ],
+      "prerrequisitosNumeros": [
+        40,
+        41,
+        42,
+        32
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": true,
@@ -910,8 +1124,16 @@
       "tipo": "troncal",
       "color": "#6d28d9",
       "textColor": "#ffffff",
-      "prerrequisitos": ["EFER-901", "EFER-702", "EFER-801"],
-      "prerrequisitosNumeros": [44, 36, 40],
+      "prerrequisitos": [
+        "EFER-901",
+        "EFER-702",
+        "EFER-801"
+      ],
+      "prerrequisitosNumeros": [
+        44,
+        36,
+        40
+      ],
       "correquisitos": [],
       "correquisitosNumeros": [],
       "campoClinico": true,
