@@ -32,7 +32,6 @@ export default function App() {
   const [highlightClinics, setHighlightClinics] = useState(false);
   const [search, setSearch] = useState('');
   const [showModalInfo, setShowModalInfo] = useState(false);
-  const [showFastApproveModal, setShowFastApproveModal] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(90);
 
   const containerRef = useRef(null);
@@ -161,17 +160,65 @@ export default function App() {
     }
   };
 
+  // Alternar aprobación de todos los ramos de un año
+  const handleToggleYear = (targetYear) => {
+    const yearCourses = mallaData.ramos.filter(r => r.ano === targetYear).map(r => r.id);
+    const allApproved = yearCourses.length > 0 && yearCourses.every(id => approved.includes(id));
+
+    if (allApproved) {
+      // Si todos los ramos del año están aprobados, al hacer clic se desaprueban junto con sus descendientes
+      const toRemove = [...yearCourses];
+      yearCourses.forEach(id => {
+        const desc = getAllDescendants(id);
+        desc.forEach(dId => {
+          if (!toRemove.includes(dId) && approved.includes(dId)) toRemove.push(dId);
+        });
+      });
+      setApproved(prev => prev.filter(id => !toRemove.includes(id)));
+    } else {
+      // Si no están todos aprobados, aprobarlos todos (incluyendo sus prerrequisitos)
+      const toAdd = [];
+      yearCourses.forEach(id => {
+        const ancestors = getAllAncestors(id);
+        ancestors.forEach(aId => {
+          if (!toAdd.includes(aId) && !approved.includes(aId)) toAdd.push(aId);
+        });
+        if (!toAdd.includes(id) && !approved.includes(id)) toAdd.push(id);
+      });
+      setApproved(prev => [...new Set([...prev, ...toAdd])]);
+    }
+  };
+
+  // Alternar aprobación de todos los ramos de un semestre
+  const handleToggleSemester = (targetSemester) => {
+    const semCourses = mallaData.ramos.filter(r => r.semestre === targetSemester).map(r => r.id);
+    const allApproved = semCourses.length > 0 && semCourses.every(id => approved.includes(id));
+
+    if (allApproved) {
+      const toRemove = [...semCourses];
+      semCourses.forEach(id => {
+        const desc = getAllDescendants(id);
+        desc.forEach(dId => {
+          if (!toRemove.includes(dId) && approved.includes(dId)) toRemove.push(dId);
+        });
+      });
+      setApproved(prev => prev.filter(id => !toRemove.includes(id)));
+    } else {
+      const toAdd = [];
+      semCourses.forEach(id => {
+        const ancestors = getAllAncestors(id);
+        ancestors.forEach(aId => {
+          if (!toAdd.includes(aId) && !approved.includes(aId)) toAdd.push(aId);
+        });
+        if (!toAdd.includes(id) && !approved.includes(id)) toAdd.push(id);
+      });
+      setApproved(prev => [...new Set([...prev, ...toAdd])]);
+    }
+  };
+
   // Reinicio directo sin confirmación molesta
   const handleClear = () => {
     setApproved([]);
-  };
-
-  const handleApproveUntilSemester = (targetSemester) => {
-    const targetCourses = mallaData.ramos
-      .filter(r => r.semestre <= targetSemester)
-      .map(r => r.id);
-    setApproved(prev => [...new Set([...prev, ...targetCourses])]);
-    setShowFastApproveModal(false);
   };
 
   // Datos del ramo sobre el cual está el cursor
@@ -395,23 +442,18 @@ export default function App() {
       opacityStyle = 'opacity-85 hover:opacity-100';
     }
 
-    // MODO "CONTIENE CAMPO CLÍNICO":
-    // Si está activado, los ramos clínicos se distinguen notablemente (aunque no estén habilitados),
-    // y el que esté habilitado se ve COMPLETAMENTE MÁS LLAMATIVO con resplandor dorado/esmeralda y pulso.
+    // MODO "CONTIENE CAMPO CLÍNICO"
     let clinicalHighlightClass = '';
     if (highlightClinics) {
       if (isClinical) {
         if (unlocked && !isApp) {
-          // Habilitado + Clínico: Máximo resplandor y llamado visual
           clinicalHighlightClass = 'ring-4 ring-amber-300 border-2 border-emerald-400 shadow-[0_0_25px_rgba(251,191,36,0.9)] scale-[1.04] z-20 brightness-125 opacity-100 animate-pulse';
         } else if (isApp) {
           clinicalHighlightClass = 'ring-2 ring-amber-400 border border-amber-400/80 shadow-[0_0_12px_rgba(251,191,36,0.5)] z-10 opacity-95';
         } else {
-          // Bloqueado pero Clínico: Se nota y distingue claramente de los demás
           clinicalHighlightClass = 'ring-2 ring-amber-500/90 border-2 border-amber-500/80 shadow-[0_0_14px_rgba(245,158,11,0.6)] z-10 brightness-110 opacity-85';
         }
       } else {
-        // No tiene campo clínico: se atenúa para destacar las clínicas
         opacityStyle = 'opacity-20 pointer-events-none grayscale-[40%]';
       }
     }
@@ -421,10 +463,8 @@ export default function App() {
     if (isHovered) {
       hoverRing = 'ring-2 ring-white scale-[1.03] shadow-2xl z-30 brightness-110 opacity-100';
     } else if (isPrereq) {
-      // Prerrequisito que este ramo necesita: Iluminado en NARANJA
       hoverRing = 'ring-2 ring-orange-500 scale-[1.02] shadow-[0_0_15px_rgba(249,115,22,0.7)] z-20 brightness-110 opacity-100';
     } else if (isUnlockTarget) {
-      // Ramo futuro que este ramo abre: Iluminado en CELESTE / CYAN
       hoverRing = 'ring-2 ring-cyan-400 scale-[1.02] shadow-[0_0_15px_rgba(56,189,248,0.7)] z-20 brightness-110 opacity-100';
     } else if (isCoreq) {
       hoverRing = 'ring-2 ring-red-500 scale-[1.02] shadow-[0_0_15px_rgba(239,68,68,0.7)] z-20 opacity-100';
@@ -456,7 +496,6 @@ export default function App() {
         {/* ================= BARRA SUPERIOR DE LA TARJETA ================= */}
         <div className="bg-[#121316] px-1.5 py-0.5 flex items-center justify-between border-b border-black/40">
           <div className="flex items-center gap-1 min-w-0">
-            {/* Punto indicador de estado: Verde = Habilitado, Rojo = Bloqueado */}
             {!isApp && (
               <span
                 className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -484,7 +523,6 @@ export default function App() {
             )}
           </div>
 
-          {/* Número correlativo del ramo (1 al 45) en círculo blanco */}
           <span
             className="w-4 h-4 rounded-full bg-white text-black font-black text-[9px] flex items-center justify-center flex-shrink-0 shadow-sm"
             title={`Ramo correlativo N° ${course.numero}`}
@@ -524,7 +562,6 @@ export default function App() {
 
           {isApp && <div className="absolute inset-0 bg-black/40 z-10" />}
 
-          {/* Insignia cuando el filtro de Campos Clínicos está activo */}
           {highlightClinics && isClinical && (
             <div
               className={`absolute bottom-0 right-0 z-20 px-1 py-0.2 rounded-tl text-[8px] font-black uppercase tracking-wider ${
@@ -555,8 +592,8 @@ export default function App() {
                     key={num}
                     className={`w-3.5 h-3.5 rounded-full text-[8.5px] font-black flex items-center justify-center border ${
                       reqApp
-                        ? 'bg-emerald-500 text-black border-emerald-300' // Verde si aprobado / habilitado
-                        : 'bg-red-500 text-white border-red-300'       // Rojo si no aprobado / pendiente
+                        ? 'bg-emerald-500 text-black border-emerald-300'
+                        : 'bg-red-500 text-white border-red-300'
                     }`}
                   >
                     {num}
@@ -587,7 +624,7 @@ export default function App() {
               Malla Interactiva Enfermería UNAB
             </h1>
             <p className="text-xs text-zinc-400 hidden sm:block">
-              Verde: habilitado • Rojo: bloqueado • Flechas directas y formato adaptable
+              Verde: habilitado • Rojo: bloqueado • Haz clic en un Año o Semestre para aprobarlo
             </p>
           </div>
 
@@ -652,16 +689,6 @@ export default function App() {
               <span>Contiene Campo Clínico</span>
             </button>
 
-            {/* Aprobación Rápida */}
-            <button
-              onClick={() => setShowFastApproveModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700 transition"
-              title="Aprobar hasta semestre X"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden md:inline">Aprobar Semestre</span>
-            </button>
-
             {/* Simbología */}
             <button
               onClick={() => setShowModalInfo(true)}
@@ -674,139 +701,160 @@ export default function App() {
         </div>
       </header>
 
-      {/* ================= CONTENEDOR PRINCIPAL CENTRADO Y ADAPTABLE ================= */}
-      <main className="flex-1 overflow-x-auto overflow-y-visible px-6 py-6 w-full flex justify-center">
-        {/* Contenedor centrado con m-auto y origin-top */}
-        <div
-          ref={containerRef}
-          className="relative m-auto min-w-max transition-transform duration-75 origin-top"
-          style={{ transform: `scale(${zoomLevel / 100})` }}
-        >
-          {/* ================= CAPA DE FLECHAS SVG DIRECTAS Y PRECISAS ================= */}
-          <svg
-            className="absolute inset-0 pointer-events-none z-30 w-full h-full"
-            style={{ minWidth: '100%', minHeight: '100%', pointerEvents: 'none' }}
+      {/* ================= CONTENEDOR PRINCIPAL TOTALMENTE ADAPTABLE ================= */}
+      <main className="flex-1 overflow-x-auto overflow-y-visible px-6 py-6 w-full">
+        {/* Envoltorio w-fit min-w-full que permite scroll natural desde x=0 sin cortar los primeros semestres */}
+        <div className="w-fit min-w-full flex justify-center">
+          <div
+            ref={containerRef}
+            className="relative min-w-max transition-transform duration-75 origin-top"
+            style={{ transform: `scale(${zoomLevel / 100})` }}
           >
-            <defs>
-              {/* Flecha Naranja (Prerrequisitos previos directos) */}
-              <marker
-                id="arrow-orange"
-                markerWidth="6"
-                markerHeight="6"
-                refX="5"
-                refY="3"
-                orient="auto"
-              >
-                <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#f97316" />
-              </marker>
+            {/* ================= CAPA DE FLECHAS SVG DIRECTAS Y PRECISAS ================= */}
+            <svg
+              className="absolute inset-0 pointer-events-none z-30 w-full h-full"
+              style={{ minWidth: '100%', minHeight: '100%', pointerEvents: 'none' }}
+            >
+              <defs>
+                <marker
+                  id="arrow-orange"
+                  markerWidth="6"
+                  markerHeight="6"
+                  refX="5"
+                  refY="3"
+                  orient="auto"
+                >
+                  <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#f97316" />
+                </marker>
 
-              {/* Flecha Celeste (Ramos que desbloquea a futuro) */}
-              <marker
-                id="arrow-cyan"
-                markerWidth="6"
-                markerHeight="6"
-                refX="5"
-                refY="3"
-                orient="auto"
-              >
-                <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#38bdf8" />
-              </marker>
+                <marker
+                  id="arrow-cyan"
+                  markerWidth="6"
+                  markerHeight="6"
+                  refX="5"
+                  refY="3"
+                  orient="auto"
+                >
+                  <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#38bdf8" />
+                </marker>
 
-              {/* Flecha Roja (Co-requisitos vinculados) */}
-              <marker
-                id="arrow-red"
-                markerWidth="6"
-                markerHeight="6"
-                refX="5"
-                refY="3"
-                orient="auto"
-              >
-                <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#ef4444" />
-              </marker>
-            </defs>
+                <marker
+                  id="arrow-red"
+                  markerWidth="6"
+                  markerHeight="6"
+                  refX="5"
+                  refY="3"
+                  orient="auto"
+                >
+                  <path d="M 0 0.5 L 5 3 L 0 5.5 z" fill="#ef4444" />
+                </marker>
+              </defs>
 
-            {activeArrows.map(arrow => {
-              let markerUrl = 'url(#arrow-cyan)';
-              if (arrow.color === '#f97316') markerUrl = 'url(#arrow-orange)';
-              if (arrow.color === '#ef4444') markerUrl = 'url(#arrow-red)';
+              {activeArrows.map(arrow => {
+                let markerUrl = 'url(#arrow-cyan)';
+                if (arrow.color === '#f97316') markerUrl = 'url(#arrow-orange)';
+                if (arrow.color === '#ef4444') markerUrl = 'url(#arrow-red)';
 
-              return (
-                <g key={arrow.id} style={{ pointerEvents: 'none' }}>
-                  {/* Sombra de contraste para que la flecha destaque siempre */}
-                  <path d={arrow.d} fill="none" stroke="#000000" strokeWidth="4" opacity="0.6" />
-                  <path
-                    d={arrow.d}
-                    fill="none"
-                    stroke={arrow.color}
-                    strokeWidth={arrow.strokeWidth}
-                    strokeDasharray={arrow.dashed ? '5,4' : 'none'}
-                    markerEnd={markerUrl}
-                  />
-                </g>
-              );
-            })}
-          </svg>
+                return (
+                  <g key={arrow.id} style={{ pointerEvents: 'none' }}>
+                    <path d={arrow.d} fill="none" stroke="#000000" strokeWidth="4" opacity="0.6" />
+                    <path
+                      d={arrow.d}
+                      fill="none"
+                      stroke={arrow.color}
+                      strokeWidth={arrow.strokeWidth}
+                      strokeDasharray={arrow.dashed ? '5,4' : 'none'}
+                      markerEnd={markerUrl}
+                    />
+                  </g>
+                );
+              })}
+            </svg>
 
-          {/* Cabecera de Años: Ancho 308px (2 columnas de 145px + 1 gap de 18px = 308px) */}
-          <div className="flex gap-[18px] mb-2 text-center">
-            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
-              Año 1
+            {/* Cabecera de Años Clicables: Ancho 308px */}
+            <div className="flex gap-[18px] mb-2 text-center">
+              {[1, 2, 3, 4, 5].map(anoNum => {
+                const yearCourses = mallaData.ramos.filter(r => r.ano === anoNum).map(r => r.id);
+                const isComplete = yearCourses.length > 0 && yearCourses.every(id => approved.includes(id));
+                const someApproved = yearCourses.some(id => approved.includes(id));
+
+                return (
+                  <button
+                    key={anoNum}
+                    onClick={() => handleToggleYear(anoNum)}
+                    title={`Clic para ${isComplete ? 'desmarcar' : 'aprobar'} todos los ramos del Año ${anoNum}`}
+                    className={`w-[308px] py-1.5 rounded text-xs font-black tracking-wider transition-all duration-150 cursor-pointer border select-none flex items-center justify-center gap-1.5 ${
+                      isComplete
+                        ? 'bg-emerald-950/70 border-emerald-500 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)] hover:bg-emerald-900/60'
+                        : someApproved
+                        ? 'bg-zinc-900/90 border-blue-500/60 text-blue-300 hover:bg-zinc-800 hover:border-blue-400'
+                        : 'bg-[#18191d] border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 hover:text-white'
+                    } active:scale-[0.99]`}
+                  >
+                    {isComplete && <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />}
+                    <span>Año {anoNum}</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
-              Año 2
-            </div>
-            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
-              Año 3
-            </div>
-            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
-              Año 4
-            </div>
-            <div className="w-[308px] bg-[#18191d] border border-zinc-700 py-1.5 rounded text-xs font-black tracking-wider text-zinc-200">
-              Año 5
-            </div>
-          </div>
 
-          {/* Cabecera de Semestres (I a X): Con separación multiplicada por 1.5x (18px) */}
-          <div className="flex gap-[18px] mb-3.5 text-center">
-            {semestersData.map(sem => (
-              <div
-                key={sem.num}
-                className="w-[145px] flex-shrink-0 bg-[#121316] border border-zinc-800 py-1 rounded text-xs font-mono font-bold text-zinc-300"
-              >
-                {sem.roman}
-              </div>
-            ))}
-          </div>
+            {/* Cabecera de Semestres Clicables (I a X) */}
+            <div className="flex gap-[18px] mb-3.5 text-center">
+              {semestersData.map(sem => {
+                const semCourses = mallaData.ramos.filter(r => r.semestre === sem.num).map(r => r.id);
+                const isComplete = semCourses.length > 0 && semCourses.every(id => approved.includes(id));
+                const someApproved = semCourses.some(id => approved.includes(id));
 
-          {/* PARTE SUPERIOR: RAMOS TRONCALES (Separación horizontal 18px, vertical 15px) */}
-          <div className="flex gap-[18px] items-start">
-            {semestersData.map(sem => (
-              <div key={sem.num} className="w-[145px] flex-shrink-0 flex flex-col gap-[15px] min-h-[480px]">
-                {sem.troncales.map(course => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
-              </div>
-            ))}
-          </div>
+                return (
+                  <button
+                    key={sem.num}
+                    onClick={() => handleToggleSemester(sem.num)}
+                    title={`Clic para ${isComplete ? 'desmarcar' : 'aprobar'} todos los ramos del Semestre ${sem.roman}`}
+                    className={`w-[145px] flex-shrink-0 py-1 rounded text-xs font-mono font-bold transition-all duration-150 cursor-pointer border select-none flex items-center justify-center gap-1 ${
+                      isComplete
+                        ? 'bg-emerald-950/70 border-emerald-500 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.3)] hover:bg-emerald-900/60'
+                        : someApproved
+                        ? 'bg-zinc-900/90 border-blue-500/60 text-blue-300 hover:bg-zinc-800 hover:border-blue-400'
+                        : 'bg-[#121316] border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:border-zinc-600 hover:text-zinc-200'
+                    } active:scale-[0.98]`}
+                  >
+                    {isComplete && <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />}
+                    <span>{sem.roman}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-          {/* SEPARADOR VISUAL DE CURSOS TRANSVERSALES */}
-          <div className="my-7 flex items-center gap-3 w-full">
-            <div className="h-px bg-zinc-800 flex-1" />
-            <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 whitespace-nowrap">
-              Cursos Transversales & Idiomas
-            </span>
-            <div className="h-px bg-zinc-800 flex-1" />
-          </div>
+            {/* PARTE SUPERIOR: RAMOS TRONCALES */}
+            <div className="flex gap-[18px] items-start">
+              {semestersData.map(sem => (
+                <div key={sem.num} className="w-[145px] flex-shrink-0 flex flex-col gap-[15px] min-h-[480px]">
+                  {sem.troncales.map(course => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+              ))}
+            </div>
 
-          {/* PARTE INFERIOR: RAMOS TRANSVERSALES E INGLÉS */}
-          <div className="flex gap-[18px] items-start">
-            {semestersData.map(sem => (
-              <div key={sem.num} className="w-[145px] flex-shrink-0 flex flex-col gap-[15px]">
-                {sem.transversales.map(course => (
-                  <CourseCard key={course.id} course={course} />
-                ))}
-              </div>
-            ))}
+            {/* SEPARADOR VISUAL DE CURSOS TRANSVERSALES */}
+            <div className="my-7 flex items-center gap-3 w-full">
+              <div className="h-px bg-zinc-800 flex-1" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 whitespace-nowrap">
+                Cursos Transversales & Idiomas
+              </span>
+              <div className="h-px bg-zinc-800 flex-1" />
+            </div>
+
+            {/* PARTE INFERIOR: RAMOS TRANSVERSALES E INGLÉS */}
+            <div className="flex gap-[18px] items-start">
+              {semestersData.map(sem => (
+                <div key={sem.num} className="w-[145px] flex-shrink-0 flex flex-col gap-[15px]">
+                  {sem.transversales.map(course => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </main>
@@ -906,7 +954,7 @@ export default function App() {
 
             <button
               onClick={handleClear}
-              className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-900 hover:bg-red-950/60 hover:text-red-300 border border-zinc-700 text-zinc-400 transition"
+              className="flex items-center gap-1 px-2.5 py-1 rounded bg-zinc-900 hover:bg-red-950/60 hover:text-red-300 border border-zinc-700 text-zinc-400 transition cursor-pointer"
               title="Reiniciar todos los ramos aprobados inmediatamente"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -932,7 +980,18 @@ export default function App() {
               Simbología y Mecánicas de la Malla
             </h3>
 
-            <div className="space-y-2.5 text-xs">
+            <div className="space-y-2.5 text-xs max-h-[75vh] overflow-y-auto pr-1">
+              {/* Nueva sección destacada: Clic en Años y Semestres */}
+              <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/60 flex gap-3 items-start">
+                <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-bold text-blue-300">Aprobación Rápida por Año o Semestre</h4>
+                  <p className="text-zinc-300 text-[11px] mt-0.5">
+                    Puedes cliquear directamente los botones de <strong>Año</strong> (ej. <em>Año 1</em>, <em>Año 2</em>...) o los botones de <strong>Semestre</strong> (ej. <em>I</em>, <em>II</em>, <em>III</em>...) ubicados en la parte superior para aprobar o desmarcar todos sus ramos en un solo clic.
+                  </p>
+                </div>
+              </div>
+
               <div className="p-3 rounded-xl bg-zinc-950 border border-emerald-500/50 flex gap-3 items-start">
                 <span className="w-4 h-4 rounded-full bg-emerald-400 text-black font-black text-[9px] flex items-center justify-center shadow-[0_0_8px_#34d399]">
                   ✓
@@ -1019,48 +1078,6 @@ export default function App() {
               className="mt-5 w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition"
             >
               Entendido
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL DE APROBACIÓN RÁPIDA ================= */}
-      {showFastApproveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-zinc-900 border border-zinc-700 max-w-md w-full rounded-2xl p-6 shadow-2xl relative text-left">
-            <button
-              onClick={() => setShowFastApproveModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-blue-400" />
-              Aprobación Rápida de Semestres
-            </h3>
-            <p className="text-xs text-zinc-400 mb-4">
-              Marca todos los ramos aprobados hasta el semestre que elijas con 1 clic:
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-              {semestersData.map(sem => (
-                <button
-                  key={sem.num}
-                  onClick={() => handleApproveUntilSemester(sem.num)}
-                  className="p-2.5 rounded-xl bg-zinc-950 hover:bg-blue-600 hover:text-white border border-zinc-800 text-xs font-bold text-zinc-200 transition text-left flex items-center justify-between"
-                >
-                  <span>Hasta Semestre {sem.roman}</span>
-                  <span className="text-[10px] text-zinc-400">Año {sem.ano}</span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={() => setShowFastApproveModal(false)}
-              className="mt-4 w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-semibold transition"
-            >
-              Cancelar
             </button>
           </div>
         </div>
