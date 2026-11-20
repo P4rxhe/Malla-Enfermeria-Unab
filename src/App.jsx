@@ -581,22 +581,14 @@ export default function App() {
       <header className="sticky top-0 z-40 bg-[#0c0d10]/95 backdrop-blur-md border-b border-zinc-800 px-5 py-3 shadow-xl">
         <div className="max-w-[1920px] mx-auto flex flex-wrap items-center justify-between gap-3">
 
-          {/* Título con mención requerida */}
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🩺</span>
-            <div>
-              <div className="flex items-center flex-wrap gap-2">
-                <h1 className="text-base md:text-xl font-black tracking-tight text-white">
-                  Malla Interactiva Enfermería UNAB
-                </h1>
-                <span className="text-xs font-normal text-zinc-400 lowercase">
-                  (creado por un estudiante de la UDP)
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">
-                Verde: habilitado • Rojo: bloqueado • Flechas directas y formato adaptable
-              </p>
-            </div>
+          {/* Título principal */}
+          <div>
+            <h1 className="text-base md:text-xl font-black tracking-tight text-white">
+              Malla Interactiva Enfermería UNAB
+            </h1>
+            <p className="text-xs text-zinc-400 hidden sm:block">
+              Verde: habilitado • Rojo: bloqueado • Flechas directas y formato adaptable
+            </p>
           </div>
 
           {/* Barra de Controles: Buscador, Zoom, Campos Clínicos, Simbología */}
